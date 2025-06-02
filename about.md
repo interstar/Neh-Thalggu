@@ -10,14 +10,33 @@ The project implements this vision through a Model-Context Protocol (MCP) server
 
 ### Server Structure
 - `src/dsl_mcp_server/core.clj`: Main server implementation
-  - Handles HTTP endpoints
-  - Provides tool descriptions for MCP clients
-  - Routes requests to appropriate DSL compilers
+  - Defines and initializes the DSL registry
+  - Sets up HTTP server and routes
+  - Loads and manages prompt files
+  - Provides root endpoint for tool discovery
+
+- `src/dsl_mcp_server/registry.clj`: Registry management
+  - Handles DSL registration and updates
+  - Generates tool descriptions and routes
+  - Manages prompt file mappings
+  - Provides handlers for DSL compilation and headers
 
 - `src/dsl_mcp_server/dsls/speak.clj`: Implementation of the example "speak" DSL
   - Grammar definition for the "Name says Message" syntax
   - Compiler that generates Haxe classes
   - Header generator for required interfaces/dependencies
+
+### Registry Pattern
+The registry system follows a clear separation of concerns:
+1. `core.clj` owns the registry state and server setup
+2. `registry.clj` provides pure functions for:
+   - Generating tool descriptions and routes
+   - Managing prompt file mappings
+   - Handling DSL registration
+3. Each DSL implementation provides:
+   - Compilation function
+   - Header generation function
+   - Prompt file references
 
 ### DSL Implementation Pattern
 Each DSL in the system follows a pattern of providing:
