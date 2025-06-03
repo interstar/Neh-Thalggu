@@ -6,7 +6,8 @@
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
             [dsl-mcp-server.registry :as registry]
-            [dsl-mcp-server.dsls.speak :as speak]))
+            [dsl-mcp-server.dsls.speak :as speak]
+            [dsl-mcp-server.dsls.ui :as ui]))
 
 (declare DSLregistry)
 
@@ -35,12 +36,18 @@
 ;; Define the DSL registry
 (def DSLregistry
   (let [reg (-> {}
-                 (registry/add-dsl "speak"
+                 (registry/add-dsl "speak" "haxe"
                                     :description "A DSL for generating speaker classes"
                                     :compile-fn #'speak/compile-to-haxe
                                     :header-fn #'speak/get-header
-                                    :prompts {:compile "compile-speak.json"
-                                             :header "header-speak.json"}))]
+                                    :prompts {:compile "compile-speak-haxe.json"
+                                             :header "header-speak-haxe.json"})
+                 (registry/add-dsl "ui" "jinja2"
+                                    :description "A DSL for generating UI layouts"
+                                    :compile-fn #'ui/compile-to-jinja2
+                                    :header-fn #'ui/get-header
+                                    :prompts {:compile "compile-ui-jinja2.json"
+                                             :header "header-ui-jinja2.json"}))]
     (println "DEBUG: DSLregistry after construction:\n" (with-out-str (clojure.pprint/pprint reg)))
     reg))
 

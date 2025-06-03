@@ -1,5 +1,6 @@
 (ns dsl-mcp-server.dsls.ui
-  (:require [instaparse.core :as insta]))
+  (:require [instaparse.core :as insta]
+            [clojure.string :as str]))
 
 (def ui-grammar
   "S = Layout
@@ -20,12 +21,41 @@
 
 (defn get-header []
   {:success true
-   :haxeCode "// UI Layout DSL Header
-// This will contain any necessary interfaces or base classes
-// for the UI components"})
+   :jinja2Code "<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}{% endblock %}</title>
+    <style>
+        /* Essential structural CSS for UI DSL layouts */
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .row {
+            display: flex;
+            gap: 20px;
+        }
+        /* Grid layout structure - essential for DSL grid layouts */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .grid-row {
+            display: contents;
+        }
+        /* Note: Visual styling (colors, shadows, etc.) should be added by the template designer */
+    </style>
+</head>
+<body>
+    {% block content %}{% endblock %}
+</body>
+</html>"})
 
 (defn slot-div [id]
-  (format "<div id=\"%s\">{{ %s }}</div>" id id))
+  (let [jinja-id (str/replace id #"-" "_")]
+    (format "<div id=\"%s\">{{ %s }}</div>" id jinja-id)))
 
 (defn gen-jinja2 [tree]
   (letfn [(walk [node]
@@ -40,14 +70,14 @@
                                          (apply str (map walk (filter vector? children)))
                                          "</div>")
                   :VerticalLayout (str "<div class=\"column\">"
-                                       (apply str (map walk (filter vector? children)))
-                                       "</div>")
+                                      (apply str (map walk (filter vector? children)))
+                                      "</div>")
                   :ResponsiveLayout (str "<div class=\"responsive-row\">"
                                          (apply str (map walk (filter vector? children)))
                                          "</div>")
                   :GridLayout (str "<div class=\"grid\">"
-                                   (apply str (map walk (filter vector? children)))
-                                   "</div>")
+                                  (apply str (map walk (filter vector? children)))
+                                  "</div>")
                   :Row (str "<div class=\"grid-row\">"
                             (apply str (map walk (filter vector? children)))
                             "</div>")
