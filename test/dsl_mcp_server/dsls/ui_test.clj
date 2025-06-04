@@ -40,36 +40,57 @@
     (is (insta/failure? (ui/parser "<? a b"))) ; Incomplete responsive
     ))
 
+  (testing "Complex nested layout with type hints and parameters"
+    (testing "Play area with scales"
+      (let [dsl "<play-area [chromatic major minor diminished pentatonic1 debussy]>"
+            result (ui/parser dsl)]
+        (println "Play area parse result:" result)
+        (is (not (insta/failure? result)) "Parser should accept play area with scales")))
+    
+    (testing "Grid with type hints"
+      (let [dsl "[# red-speed/horizontal-slider red-instrument red-volume/horizontal-slider | green-speed/horizontal-slider green-instrument green-volume/horizontal-slider | blue-speed/horizontal-slider blue-instrument blue-volume/horizontal-slider(min=0,max=127)]"
+            result (ui/parser dsl)]
+        (println "Grid parse result:" result)
+        (is (not (insta/failure? result)) "Parser should accept grid with type hints")))
+    
+    (testing "Full nested layout"
+      (let [dsl "[<play-area [chromatic major minor diminished pentatonic1 debussy]> [# red-speed/horizontal-slider red-instrument red-volume/horizontal-slider | green-speed/horizontal-slider green-instrument green-volume/horizontal-slider | blue-speed/horizontal-slider blue-instrument blue-volume/horizontal-slider(min=0,max=127)]]"
+            result (ui/parser dsl)]
+        (println "Full layout parse result:" result)
+        (is (not (insta/failure? result)) "Parser should accept full nested layout")
+        (when (insta/failure? result)
+          (println "Parse failure:" (insta/get-failure result))))))
+
 (deftest compilation-tests
   (testing "Basic compilation"
     (let [result (ui/compile-to-jinja2 "<a b c>")]
       (is (:success result))
-      (is (string? (:jinja2Code result)))
-      (is (= (:jinja2Code result)
+      (is (string? (:code result)))
+      (is (= (:code result)
              "<div class=\"row\"><div id=\"a\">{{ a }}</div><div id=\"b\">{{ b }}</div><div id=\"c\">{{ c }}</div></div>"))))
 
   (testing "Vertical layout"
     (let [result (ui/compile-to-jinja2 "[x y]")]
       (is (:success result))
-      (is (= (:jinja2Code result)
+      (is (= (:code result)
              "<div class=\"column\"><div id=\"x\">{{ x }}</div><div id=\"y\">{{ y }}</div></div>"))))
 
   (testing "Responsive layout"
     (let [result (ui/compile-to-jinja2 "<? foo bar>")]
       (is (:success result))
-      (is (= (:jinja2Code result)
+      (is (= (:code result)
              "<div class=\"responsive-row\"><div id=\"foo\">{{ foo }}</div><div id=\"bar\">{{ bar }}</div></div>"))))
 
   (testing "Grid layout"
     (let [result (ui/compile-to-jinja2 "[# a b | c d]")]
       (is (:success result))
-      (is (= (:jinja2Code result)
+      (is (= (:code result)
              "<div class=\"grid\"><div class=\"grid-row\"><div id=\"a\">{{ a }}</div><div id=\"b\">{{ b }}</div></div><div class=\"grid-row\"><div id=\"c\">{{ c }}</div><div id=\"d\">{{ d }}</div></div></div>"))))
 
   (testing "Nested layouts"
     (let [result (ui/compile-to-jinja2 "[header <main aside> footer]")]
       (is (:success result))
-      (is (= (:jinja2Code result)
+      (is (= (:code result)
              "<div class=\"column\"><div id=\"header\">{{ header }}</div><div class=\"row\"><div id=\"main\">{{ main }}</div><div id=\"aside\">{{ aside }}</div></div><div id=\"footer\">{{ footer }}</div></div>"))))
 
   (testing "Invalid input compilation"

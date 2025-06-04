@@ -7,7 +7,8 @@
             [clojure.pprint :as pprint]
             [dsl-mcp-server.registry :as registry]
             [dsl-mcp-server.dsls.speak :as speak]
-            [dsl-mcp-server.dsls.ui :as ui]))
+            [dsl-mcp-server.dsls.ui :as ui]
+            [clojure.string :as string]))
 
 (declare DSLregistry)
 
@@ -40,12 +41,14 @@
                                     :description "A DSL for generating speaker classes"
                                     :compile-fn #'speak/compile-to-haxe
                                     :header-fn #'speak/get-header
+                                    :eyeball-fn #'speak/eyeball-haxe
                                     :prompts {:compile "compile-speak-haxe.json"
                                              :header "header-speak-haxe.json"})
                  (registry/add-dsl "ui" "jinja2"
                                     :description "A DSL for generating UI layouts"
                                     :compile-fn #'ui/compile-to-jinja2
                                     :header-fn #'ui/get-header
+                                    :eyeball-fn #'ui/eyeball-jinja2
                                     :prompts {:compile "compile-ui-jinja2.json"
                                              :header "header-ui-jinja2.json"}))]
     (println "DEBUG: DSLregistry after construction:\n" (with-out-str (clojure.pprint/pprint reg)))
@@ -69,6 +72,16 @@
   
   ;; Tool routes from registry
   (apply routes (registry/get-tool-routes DSLregistry))
+  
+  ;; Overview endpoint
+  (GET "/overview" []
+    (let [explanation (-> (io/resource "overview.md") slurp)
+          dsls (->> DSLregistry
+                    :dsls
+                    (map (fn [[dsl-name dsl-info]]
+                           (str "- **" dsl-name "**: " (get-in dsl-info [:targets (first (keys (:targets dsl-info))) :description]))))
+                    (string/join "\n"))]
+      (json/generate-string {:explanation explanation :DSLs dsls})))
   
   ;; Not found handler
   (route/not-found {:status 404 :body "Not Found"}))
