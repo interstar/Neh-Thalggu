@@ -4,7 +4,8 @@
             [dsl-mcp-server.schema :as schema]
             [malli.core :as m]
             [cheshire.core :as json]
-            [dsl-mcp-server.plugin-loader :as loader]))
+            [dsl-mcp-server.plugin-loader :as loader]
+            [clojure.string :as str]))
 
 (def test-plugin-dir "plugins")
 (def test-registry (loader/load-plugins test-plugin-dir))
@@ -44,11 +45,15 @@
         (is (some #(= (:name %) "header-speak-haxe") tools))))))
 
 (deftest list-prompts-test
-  (testing "Listing prompts"
-    (let [prompts (registry/list-prompts test-registry)]
+  (testing "Listing prompts like the handler"
+    (let [prompts (into {}
+                        (for [[dsl-name dsl-info] (:dsls test-registry)
+                              [target target-info] (:targets dsl-info)
+                              [prompt-type prompt-content] (:prompts target-info)]
+                          [(str prompt-type "-" dsl-name "-" target) prompt-content]))]
       (is (map? prompts))
-      (is (contains? prompts :prompts))
-      (is (pos? (count (:prompts prompts)))))))
+      (is (some #(clojure.string/starts-with? % "compile-") (keys prompts)))
+      (is (every? string? (vals prompts))))))
 
 (deftest get-prompt-test
   (testing "Getting existing prompt"

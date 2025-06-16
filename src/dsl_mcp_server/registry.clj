@@ -115,21 +115,22 @@
 (defn get-prompt-routes [registry]
   (get registry :prompt-routes []))
 
+(defn get-prompt [registry prompt-name]
+  (let [[prompt-type dsl-name target-name] (clojure.string/split prompt-name #"-")
+        dsl-info (get-in registry [:dsls (keyword dsl-name)])
+        target-info (get-in dsl-info [:targets (keyword target-name)])
+        prompt (get-in target-info [:prompts prompt-type])]
+    prompt))
+
 ;; Handler for getting a specific prompt
 (defn get-prompt-handler
   "Creates a handler for getting a specific prompt"
   [registry prompt-name]
   (fn [request]
-    (let [[prompt-type dsl-name target-name] (str/split prompt-name #"-")
-          dsl (get-in registry [:dsls (keyword dsl-name)])
-          target (get-in dsl [:targets target-name])
-          available-prompts (keys (get-in target [:prompts]))
-          prompt (get-in target [:prompts prompt-type])]
-      (println "Debug - Prompt lookup:")
-      (println "  prompt-name:" prompt-name)
-      (println "  parsed components:" [prompt-type dsl-name target-name])
-      (println "  available prompts:" available-prompts)
-      (println "  found prompt:" prompt)
+    (let [[prompt-type dsl-name target-name] (clojure.string/split prompt-name #"-")
+          dsl-info (get-in registry [:dsls (keyword dsl-name)])
+          target-info (get-in dsl-info [:targets (keyword target-name)])
+          prompt (get-in target-info [:prompts prompt-type])]
       (if prompt
         {:status 200
          :headers {"Content-Type" "application/json"}
