@@ -60,10 +60,6 @@
          [:header-fn fn?]
          [:eyeball-fn fn?]
          [:prompts [:map-of string? string?]]]]]]]]
-   [:prompts
-    [:map-of
-     string?
-     string?]]
    [:routes
     [:sequential fn?]]
    [:prompt-routes

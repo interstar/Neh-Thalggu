@@ -26,15 +26,24 @@
 
 ;; Handler for listing available prompts
 (defn list-prompts-handler [req]
-  {:status 200
-   :headers {"Content-Type" "application/json"}
-   :body (json/generate-string (registry/list-prompts DSLregistry))})
+  (let [prompts (for [[dsl-name dsl-info] (:dsls DSLregistry)
+                     [target target-info] (:targets dsl-info)
+                     [prompt-type prompt-content] (:prompts target-info)]
+                 [(str prompt-type "-" dsl-name "-" target) prompt-content])]
+    {:status 200
+     :headers {"Content-Type" "application/json"}
+     :body (json/generate-string (into {} prompts))}))
 
-;; Debug endpoint to inspect the DSLregistry's :prompts map
+;; Debug endpoint to inspect the DSLregistry's prompts
 (defn debug-prompts-handler [req]
   {:status 200
    :headers {"Content-Type" "application/json"}
-   :body (json/generate-string (get-in DSLregistry [:prompts]))})
+   :body (json/generate-string 
+          (for [[dsl-name dsl-info] (:dsls DSLregistry)
+                [target target-info] (:targets dsl-info)]
+            {:dsl dsl-name
+             :target target
+             :prompts (:prompts target-info)}))})
 
 ;; Define the DSL registry by loading plugins
 (def DSLregistry

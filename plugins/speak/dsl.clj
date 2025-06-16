@@ -26,12 +26,12 @@
               message (second message-node)]
           {:success true
            :code [(render "
-class {{name}} implements ISpeaker {\n
-   public function new() {}\n
-   public function speak():Void {\n
-      trace(\"{{name}} says {{message}}\");\n
-   }\n
-}\n
+class {{name}} implements ISpeaker {
+   public function new() {}
+   public function speak():Void {
+      trace(\"{{name}} says {{message}}\");
+   }
+}
 " {:name name :message message})]
            :notes "Generated Haxe class implementing ISpeaker interface"
            :warning ""})))

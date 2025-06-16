@@ -92,10 +92,6 @@
                                          :description "Additional information about the code check"}}
                        :required ["status" "issues"]}}}]))
 
-(defn generate-prompt-entries [dsl-name target prompts]
-  {(str "compile-" dsl-name "-" target) (get prompts "compile")
-   (str "header-" dsl-name "-" target) (get prompts "header")})
-
 (defn generate-tool-routes [dsl-name target compile-fn header-fn eyeball-fn]
   [(POST (str "/compile-" dsl-name "-" target) req
          (compile-dsl-handler compile-fn req))
@@ -109,16 +105,9 @@
                     [target target-info] (:targets dsl-info)]
                 (generate-tool-description registry dsl-name target))]
     {:tools (remove nil? (flatten tools))
-     :prompts (get registry :prompts {})
      :resources [{:name "overview"
                   :endpoint "/overview"
                   :description "Provides a high-level overview of the MCP server and its DSLs"}]}))
-
-(defn list-prompts [registry]
-  {:prompts (vals (get registry :prompts {}))})
-
-(defn get-prompt [registry name]
-  (get-in registry [:prompts name]))
 
 (defn get-tool-routes [registry]
   (get registry :routes []))
@@ -127,47 +116,52 @@
   (get registry :prompt-routes []))
 
 ;; Handler for getting a specific prompt
-(defn get-prompt-handler [registry prompt-name]
-  (println "DEBUG: Getting prompt for:" prompt-name)
-  (println "DEBUG: Available prompts in registry:" (keys (get registry :prompts)))
-  (let [prompt (get-in registry [:prompts prompt-name])]
-    (println "DEBUG: Found prompt:" prompt)
-    (if prompt
-      {:status 200
-       :headers {"Content-Type" "application/json"}
-       :body (json/generate-string {:prompt prompt})}
-      {:status 404
-       :headers {"Content-Type" "application/json"}
-       :body (json/generate-string {:error (str "Prompt not found: " prompt-name)})})))
+(defn get-prompt-handler
+  "Creates a handler for getting a specific prompt"
+  [registry prompt-name]
+  (fn [request]
+    (let [[prompt-type dsl-name target-name] (str/split prompt-name #"-")
+          dsl (get-in registry [:dsls (keyword dsl-name)])
+          target (get-in dsl [:targets target-name])
+          available-prompts (keys (get-in target [:prompts]))
+          prompt (get-in target [:prompts prompt-type])]
+      (println "Debug - Prompt lookup:")
+      (println "  prompt-name:" prompt-name)
+      (println "  parsed components:" [prompt-type dsl-name target-name])
+      (println "  available prompts:" available-prompts)
+      (println "  found prompt:" prompt)
+      (if prompt
+        {:status 200
+         :headers {"Content-Type" "application/json"}
+         :body (json/generate-string {:prompt prompt})}
+        {:status 404
+         :headers {"Content-Type" "application/json"}
+         :body (json/generate-string {:error "Prompt not found"})}))))
 
-(defn generate-prompt-routes [registry prompt-entries]
-  (map (fn [[name _]]
-         (GET (str "/prompts/" name) [] 
-              (get-prompt-handler registry name)))
-       prompt-entries))
+(defn generate-prompt-routes [registry dsl-name target]
+  [(GET (str "/prompts/compile-" dsl-name "-" target) [] 
+        (get-prompt-handler registry (str "compile-" dsl-name "-" target)))
+   (GET (str "/prompts/header-" dsl-name "-" target) [] 
+        (get-prompt-handler registry (str "header-" dsl-name "-" target)))
+   (GET (str "/prompts/eyeball-" dsl-name "-" target) [] 
+        (get-prompt-handler registry (str "eyeball-" dsl-name "-" target)))])
 
 ;; Main registry update function
 (defn add-dsl [registry dsl-name target & {:keys [description compile-fn header-fn eyeball-fn prompts]}]
-  (println "DEBUG: Adding DSL:" dsl-name "with target:" target)
-  (println "DEBUG: Prompts being added:" prompts)
-  (let [prompt-entries (generate-prompt-entries dsl-name target prompts)]
-    (println "DEBUG: Generated prompt entries:" prompt-entries)
-    (let [updated-registry (-> registry
-                              (assoc-in [:dsls dsl-name :targets target] 
-                                       {:description description
-                                        :compile-fn compile-fn
-                                        :header-fn header-fn
-                                        :eyeball-fn eyeball-fn
-                                        :prompts prompts})
-                              (update-in [:routes] concat 
-                                        (generate-tool-routes dsl-name target compile-fn header-fn eyeball-fn))
-                              (update-in [:prompts] merge prompt-entries)
-                              (update-in [:prompt-routes] concat
-                                        (generate-prompt-routes registry prompt-entries)))]
-      (println "DEBUG: Updated registry prompts:" (get updated-registry :prompts))
-      (when-not (schema/validate-registry updated-registry)
-        (throw (ex-info "Invalid registry structure after adding DSL"
-                       {:errors (schema/explain-validation-error 
-                                schema/registry-schema 
-                                updated-registry)})))
-      updated-registry))) 
+  (let [updated-registry (-> registry
+                            (assoc-in [:dsls dsl-name :targets target] 
+                                     {:description description
+                                      :compile-fn compile-fn
+                                      :header-fn header-fn
+                                      :eyeball-fn eyeball-fn
+                                      :prompts prompts})
+                            (update-in [:routes] concat 
+                                      (generate-tool-routes dsl-name target compile-fn header-fn eyeball-fn))
+                            (update-in [:prompt-routes] concat
+                                      (generate-prompt-routes registry dsl-name target)))]
+    (when-not (schema/validate-registry updated-registry)
+      (throw (ex-info "Invalid registry structure after adding DSL"
+                     {:errors (schema/explain-validation-error 
+                              schema/registry-schema 
+                              updated-registry)})))
+    updated-registry)) 
