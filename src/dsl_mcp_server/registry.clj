@@ -4,7 +4,8 @@
             [compojure.route :as route]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [dsl-mcp-server.schema :as schema]))
 
 ;; Generic handlers for all DSLs
 (defn compile-dsl-handler [compile-fn req]
@@ -92,13 +93,15 @@
                        :required ["status" "issues"]}}}]))
 
 (defn generate-prompt-entries [dsl-name target prompts]
-  {(str "compile-" dsl-name "-" target) (str "prompts/" (get prompts :compile))
-   (str "header-" dsl-name "-" target) (str "prompts/" (get prompts :header))})
+  {(str "compile-" dsl-name "-" target) (get prompts "compile")
+   (str "header-" dsl-name "-" target) (get prompts "header")})
 
 (defn generate-tool-routes [dsl-name target compile-fn header-fn eyeball-fn]
-  [(POST (str "/compile-" dsl-name "-" target) req (compile-dsl-handler compile-fn req))
+  [(POST (str "/compile-" dsl-name "-" target) req
+         (compile-dsl-handler compile-fn req))
    (GET (str "/header-" dsl-name "-" target) [] (header-dsl-handler header-fn))
-   (POST (str "/eyeball-" dsl-name "-" target) req (eyeball-dsl-handler eyeball-fn req))])
+   (POST (str "/eyeball-" dsl-name "-" target) req
+         (eyeball-dsl-handler eyeball-fn req))])
 
 ;; Registry access functions
 (defn get-tool-descriptions [registry]
@@ -124,36 +127,47 @@
   (get registry :prompt-routes []))
 
 ;; Handler for getting a specific prompt
-(defn get-prompt-handler [filename]
-  (let [resource (io/resource filename)]
-    (if resource
+(defn get-prompt-handler [registry prompt-name]
+  (println "DEBUG: Getting prompt for:" prompt-name)
+  (println "DEBUG: Available prompts in registry:" (keys (get registry :prompts)))
+  (let [prompt (get-in registry [:prompts prompt-name])]
+    (println "DEBUG: Found prompt:" prompt)
+    (if prompt
       {:status 200
        :headers {"Content-Type" "application/json"}
-       :body (slurp resource)}
+       :body (json/generate-string {:prompt prompt})}
       {:status 404
        :headers {"Content-Type" "application/json"}
-       :body (json/generate-string {:error (str "Prompt file not found: " filename)})})))
+       :body (json/generate-string {:error (str "Prompt not found: " prompt-name)})})))
 
-(defn generate-prompt-routes [prompt-entries]
-  (map (fn [[name filename]]
+(defn generate-prompt-routes [registry prompt-entries]
+  (map (fn [[name _]]
          (GET (str "/prompts/" name) [] 
-              (get-prompt-handler filename)))
+              (get-prompt-handler registry name)))
        prompt-entries))
 
 ;; Main registry update function
 (defn add-dsl [registry dsl-name target & {:keys [description compile-fn header-fn eyeball-fn prompts]}]
+  (println "DEBUG: Adding DSL:" dsl-name "with target:" target)
+  (println "DEBUG: Prompts being added:" prompts)
   (let [prompt-entries (generate-prompt-entries dsl-name target prompts)]
-    (-> registry
-        (assoc-in [:dsls dsl-name :targets target] 
-                 {:description description
-                  :compile-fn compile-fn
-                  :header-fn header-fn
-                  :eyeball-fn eyeball-fn
-                  :prompts prompts})
-        (update-in [:routes] concat 
-                  (generate-tool-routes dsl-name target compile-fn header-fn eyeball-fn))
-        (update-in [:prompts] merge prompt-entries)
-        (update-in [:prompt-routes] concat
-                  (generate-prompt-routes prompt-entries))
-        (update-in [:tools] concat
-                  (generate-tool-description registry dsl-name target))))) 
+    (println "DEBUG: Generated prompt entries:" prompt-entries)
+    (let [updated-registry (-> registry
+                              (assoc-in [:dsls dsl-name :targets target] 
+                                       {:description description
+                                        :compile-fn compile-fn
+                                        :header-fn header-fn
+                                        :eyeball-fn eyeball-fn
+                                        :prompts prompts})
+                              (update-in [:routes] concat 
+                                        (generate-tool-routes dsl-name target compile-fn header-fn eyeball-fn))
+                              (update-in [:prompts] merge prompt-entries)
+                              (update-in [:prompt-routes] concat
+                                        (generate-prompt-routes registry prompt-entries)))]
+      (println "DEBUG: Updated registry prompts:" (get updated-registry :prompts))
+      (when-not (schema/validate-registry updated-registry)
+        (throw (ex-info "Invalid registry structure after adding DSL"
+                       {:errors (schema/explain-validation-error 
+                                schema/registry-schema 
+                                updated-registry)})))
+      updated-registry))) 

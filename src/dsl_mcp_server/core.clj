@@ -6,9 +6,11 @@
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
             [dsl-mcp-server.registry :as registry]
-            [dsl-mcp-server.dsls.speak :as speak]
-            [dsl-mcp-server.dsls.ui :as ui]
-            [clojure.string :as string]))
+            [dsl-mcp-server.plugin-loader :as plugin-loader]
+            [clojure.string :as string]
+            [dsl-mcp-server.web :as web]
+            [clojure.tools.cli :refer [parse-opts]]
+            ))
 
 (declare DSLregistry)
 
@@ -34,25 +36,13 @@
    :headers {"Content-Type" "application/json"}
    :body (json/generate-string (get-in DSLregistry [:prompts]))})
 
-;; Define the DSL registry
+;; Define the DSL registry by loading plugins
 (def DSLregistry
-  (let [reg (-> {}
-                 (registry/add-dsl "speak" "haxe"
-                                    :description "A DSL for generating speaker classes"
-                                    :compile-fn #'speak/compile-to-haxe
-                                    :header-fn #'speak/get-header
-                                    :eyeball-fn #'speak/eyeball-haxe
-                                    :prompts {:compile "compile-speak-haxe.json"
-                                             :header "header-speak-haxe.json"})
-                 (registry/add-dsl "ui" "jinja2"
-                                    :description "A DSL for generating UI layouts"
-                                    :compile-fn #'ui/compile-to-jinja2
-                                    :header-fn #'ui/get-header
-                                    :eyeball-fn #'ui/eyeball-jinja2
-                                    :prompts {:compile "compile-ui-jinja2.json"
-                                             :header "header-ui-jinja2.json"}))]
-    (println "DEBUG: DSLregistry after construction:\n" (with-out-str (clojure.pprint/pprint reg)))
-    reg))
+  (let [plugins-dir (or (System/getenv "MCP_PLUGINS_DIR") "plugins")]
+    (println "Loading DSL plugins from:" plugins-dir)
+    (let [reg (plugin-loader/load-plugins plugins-dir)]
+      (println "DEBUG: DSLregistry after loading plugins:\n" (with-out-str (clojure.pprint/pprint reg)))
+      reg)))
 
 ;; MCP endpoint routes
 (defroutes app-routes
@@ -86,6 +76,69 @@
   ;; Not found handler
   (route/not-found {:status 404 :body "Not Found"}))
 
-(defn -main [& args]
-  (println "Starting DSL MCP server on port 3000...")
-  (jetty/run-jetty app-routes {:port 3000})) 
+(def cli-options
+  [["-p" "--plugin-dir DIR" "Directory containing DSL plugins"
+    :default "plugins"
+    :validate [#(.exists (clojure.java.io/file %)) "Plugin directory must exist"]]
+   ["-m" "--mcp-port PORT" "Port for MCP server"
+    :default 8080
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(< 0 % 0x10000) "Port must be between 0 and 65536"]]
+   ["-w" "--web-port PORT" "Port for web server"
+    :default 3000
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(< 0 % 0x10000) "Port must be between 0 and 65536"]]
+   ["-h" "--help"]])
+
+(defn usage [options-summary]
+  (->> ["DSL MCP Server"
+        ""
+        "Usage: java -jar dsl-mcp-server.jar [options]"
+        ""
+        "Options:"
+        options-summary
+        ""
+        "Example:"
+        "  java -jar dsl-mcp-server.jar -p /path/to/plugins -m 8080 -w 3000"]
+       (clojure.string/join \newline)))
+
+(defn error-msg [errors]
+  (str "The following errors occurred while parsing your command:\n\n"
+       (clojure.string/join \newline errors)))
+
+(defn validate-args
+  "Validate command line arguments. Either return a map indicating the program
+  should exit (with a error message, and optional ok status), or a map
+  indicating the action the program should take and the options provided."
+  [args]
+  (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
+    (cond
+      (:help options) ; help => exit OK with usage summary
+      {:exit-message (usage summary) :ok? true}
+      errors ; errors => exit with description of errors
+      {:exit-message (error-msg errors)}
+      (or (not (:plugin-dir options))
+          (not (:mcp-port options))
+          (not (:web-port options))) ; missing required args => exit with error
+      {:exit-message "Error: All three arguments (plugin-dir, mcp-port, web-port) are required."}
+      :else ; failed => exit with usage summary
+      {:options options})))
+
+(defn -main
+  "Main entry point for the DSL MCP server"
+  [& args]
+  (let [{:keys [options exit-message ok?]} (validate-args args)]
+    (if exit-message
+      (do
+        (println exit-message)
+        (System/exit (if ok? 0 1)))
+      (let [{:keys [plugin-dir mcp-port web-port]} options]
+        (try
+          (let [registry (plugin-loader/load-plugins plugin-dir)]
+            (println "Starting MCP server on port" mcp-port)
+            (jetty/run-jetty app-routes {:port mcp-port :join? false})
+            (println "Starting web server on port" web-port)
+            (web/start-web-server registry web-port))
+          (catch Exception e
+            (println "Error starting server:" (.getMessage e))
+            (System/exit 1))))))) 

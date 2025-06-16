@@ -1,61 +1,97 @@
-(ns dsl-mcp-server.dsls.ui-test
+(ns ui.test.ui-test
   (:require [clojure.test :refer :all]
-            [dsl-mcp-server.dsls.ui :as ui]
+            [dsl-mcp-server.plugin-loader :as loader]
+            [malli.core :as m]
+            [dsl-mcp-server.schema :as schema]
             [instaparse.core :as insta]))
+
+(def plugin-dir "plugins")
+(def ui-dsl (loader/load-plugin plugin-dir "ui"))
+
+(println "Testing UI DSL")
+(println (m/validate schema/plugin-schema ui-dsl))
+
+(def compile-fn (-> ui-dsl :targets (get "jinja2") :compile-fn))
+
+
+
+(deftest schema-checking
+  (testing "Schema check"
+    (is (m/validate schema/plugin-schema ui-dsl ))))
+
+(defn compile-success? [compile-result] (:success compile-result))
+(defn compile-failure? [compile-result] (not (:success compile-result)))
 
 (deftest grammar-tests
   (testing "Basic horizontal layout"
-    (is (not (insta/failure? (ui/parser "<a b c>")))))
+    (is (compile-success? (compile-fn "<a b c>"))))
   
   (testing "Basic vertical layout"
-    (is (not (insta/failure? (ui/parser "[d e f]")))))
+    (is (compile-success?
+         (compile-fn "[d e f]"))))
   
   (testing "Responsive layout"
-    (is (not (insta/failure? (ui/parser "<? g h i j>")))))
+    (is (compile-success?
+         (compile-fn "<? g h i j>"))))
   
   (testing "Grid layout"
-    (is (not (insta/failure? (ui/parser "[# a b c | d e f]")))))
+    (is (compile-success?
+         (compile-fn "[# a b c | d e f]"))))
   
   (testing "Nested layouts"
-    (is (not (insta/failure? (ui/parser "[text1 <p1 p2 p3> [# x y z | a b <d [e f g]>] ]")))))
+    (is (compile-success?
+         (compile-fn
+          "[text1 <p1 p2 p3> [# x y z | a b <d [e f g]>] ]"))))
   
   (testing "Kebab-case IDs"
-    (is (not (insta/failure? (ui/parser "<header-section main-content footer-bar>"))))
-    (is (not (insta/failure? (ui/parser "[nav-menu <user-profile settings-panel>]")))))
+    (is (compile-success?
+         (compile-fn
+          "<header-section main-content footer-bar>")))
+    (is (compile-success?
+         (compile-fn
+          "[nav-menu <user-profile settings-panel>]"))))
   
   (testing "Single item layouts"
     (testing "single item in horizontal layout"
-      (is (not (insta/failure? (ui/parser "<abc>")))))
+      (is (compile-success?
+           (compile-fn "<abc>"))))
     (testing "single item in vertical layout"
-      (is (not (insta/failure? (ui/parser "[abc]")))))
+      (is (compile-success? (compile-fn "[abc]"))))
     (testing "single item in responsive layout"
-      (is (not (insta/failure? (ui/parser "<?abc>")))))
+      (is (compile-success?
+           (compile-fn "<?abc>"))))
     (testing "single item in grid layout"
-      (is (not (insta/failure? (ui/parser "[# abc]"))))))
+      (is (compile-success?
+           (compile-fn "[# abc]")))))
   
   (testing "Invalid layouts"
-    (is (insta/failure? (ui/parser "<a b")))  ; Missing closing bracket
-    (is (insta/failure? (ui/parser "[a b")))  ; Missing closing bracket
-    (is (insta/failure? (ui/parser "[# a b"))) ; Incomplete grid
-    (is (insta/failure? (ui/parser "<? a b"))) ; Incomplete responsive
+                                        ; Missing closing bracket
+    (is (compile-failure? (compile-fn "<a b")))
+                                        ; Missing closing bracket
+    (is (compile-failure? (compile-fn "[a b")))
+                                        ; Incomplete grid
+    (is (compile-failure? (compile-fn "[# a b")))
+                                        ; Incomplete responsive
+    (is (compile-failure? (compile-fn "<? a b"))) 
     ))
 
   (testing "Complex nested layout with type hints and parameters"
     (testing "Play area with scales"
-      (let [dsl "<play-area [chromatic major minor diminished pentatonic1 debussy]>"
-            result (ui/parser dsl)]
+      (let [dsl "<play-area/screen 
+[chromatic major minor diminished pentatonic1 debussy]>"
+            result (compile-fn dsl)]
         (println "Play area parse result:" result)
-        (is (not (insta/failure? result)) "Parser should accept play area with scales")))
+        (is (not (insta/failure? result)) "Parser should accept type hint on play-area")))
     
     (testing "Grid with type hints"
       (let [dsl "[# red-speed/horizontal-slider red-instrument red-volume/horizontal-slider | green-speed/horizontal-slider green-instrument green-volume/horizontal-slider | blue-speed/horizontal-slider blue-instrument blue-volume/horizontal-slider(min=0,max=127)]"
-            result (ui/parser dsl)]
+            result (compile-fn dsl)]
         (println "Grid parse result:" result)
         (is (not (insta/failure? result)) "Parser should accept grid with type hints")))
     
     (testing "Full nested layout"
       (let [dsl "[<play-area [chromatic major minor diminished pentatonic1 debussy]> [# red-speed/horizontal-slider red-instrument red-volume/horizontal-slider | green-speed/horizontal-slider green-instrument green-volume/horizontal-slider | blue-speed/horizontal-slider blue-instrument blue-volume/horizontal-slider(min=0,max=127)]]"
-            result (ui/parser dsl)]
+            result (compile-fn dsl)]
         (println "Full layout parse result:" result)
         (is (not (insta/failure? result)) "Parser should accept full nested layout")
         (when (insta/failure? result)
@@ -63,37 +99,37 @@
 
 (deftest compilation-tests
   (testing "Basic compilation"
-    (let [result (ui/compile-to-jinja2 "<a b c>")]
+    (let [result (compile-fn "<a b c>")]
       (is (:success result))
       (is (string? (:code result)))
       (is (= (:code result)
              "<div class=\"row\"><div id=\"a\">{{ a }}</div><div id=\"b\">{{ b }}</div><div id=\"c\">{{ c }}</div></div>"))))
 
   (testing "Vertical layout"
-    (let [result (ui/compile-to-jinja2 "[x y]")]
+    (let [result (compile-fn "[x y]")]
       (is (:success result))
       (is (= (:code result)
              "<div class=\"column\"><div id=\"x\">{{ x }}</div><div id=\"y\">{{ y }}</div></div>"))))
 
   (testing "Responsive layout"
-    (let [result (ui/compile-to-jinja2 "<? foo bar>")]
+    (let [result (compile-fn "<? foo bar>")]
       (is (:success result))
       (is (= (:code result)
              "<div class=\"responsive-row\"><div id=\"foo\">{{ foo }}</div><div id=\"bar\">{{ bar }}</div></div>"))))
 
   (testing "Grid layout"
-    (let [result (ui/compile-to-jinja2 "[# a b | c d]")]
+    (let [result (compile-fn "[# a b | c d]")]
       (is (:success result))
       (is (= (:code result)
              "<div class=\"grid\"><div class=\"grid-row\"><div id=\"a\">{{ a }}</div><div id=\"b\">{{ b }}</div></div><div class=\"grid-row\"><div id=\"c\">{{ c }}</div><div id=\"d\">{{ d }}</div></div></div>"))))
 
   (testing "Nested layouts"
-    (let [result (ui/compile-to-jinja2 "[header <main aside> footer]")]
+    (let [result (compile-fn "[header <main aside> footer]")]
       (is (:success result))
       (is (= (:code result)
              "<div class=\"column\"><div id=\"header\">{{ header }}</div><div class=\"row\"><div id=\"main\">{{ main }}</div><div id=\"aside\">{{ aside }}</div></div><div id=\"footer\">{{ footer }}</div></div>"))))
 
   (testing "Invalid input compilation"
-    (let [result (ui/compile-to-jinja2 "<a b")]
+    (let [result (compile-fn "<a b")]
       (is (not (:success result)))
       (is (:error result))))) 
