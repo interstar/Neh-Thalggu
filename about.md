@@ -27,24 +27,18 @@ Typical examples of DSLs might be languages to define data-schemas. Or UI layout
 ### Server Structure
 - `src/dsl_mcp_server/core.clj`: Main server implementation
   - Defines and initializes the DSL registry
-  - Sets up HTTP server and routes
-  - Loads and manages prompt files
+  - Sets up two HTTP servers and routes
+    - one server is a web interface for human users.
+    - the other is an MCP server for AI-agent users 
   - Provides root endpoint for tool discovery
-
-- `src/dsl_mcp_server/registry.clj`: Registry management
-  - Handles DSL registration and updates
-  - Generates tool descriptions and routes
-  - Manages prompt file mappings
-  - Provides handlers for DSL compilation and headers
 
 
 ### Registry Pattern
 The registry system follows a clear separation of concerns:
 1. `core.clj` owns the registry state and server setup
-2. `registry.clj` provides pure functions for:
-   - Generating tool descriptions and routes
-   - Managing prompt file mappings
-   - Handling DSL registration
+2. `plugin-loader.clj` provides functions for loading DSLs at runtime from a plugins directory
+3. `registry.clj` provides pure functions for assembling the information from the external plugin code into the registry data-structure
+
 3. Each DSL implementation provides:
    - Compilation function
    - Header generation function
@@ -59,8 +53,8 @@ They are defined in the plugins/ directory
 ### Example: The "Speak" DSL
 The "speak" DSL demonstrates this pattern:
 - Input: `"Name says Message"`
-- Header: Provides the `Speaker` interface
-- Output: Generates Haxe classes that implement `Speaker`
+- Header: Provides the `ISpeaker` interface
+- Output: Generates Haxe classes that implement `ISpeaker`
 
 ## Using the MCP Server
 
