@@ -109,37 +109,37 @@
                         :warning ""})))
      :header-fn (fn []
                   {:success true
-                   :code (str "<!DOCTYPE html>\n"
-                              "<html>\n"
-                              "<head>\n"
-                              "    <title>{% block title %}{% endblock %}</title>\n"
-                              "    <style>\n"
-                              "        /* Essential structural CSS for UI DSL layouts */\n"
-                              "        .column {\n"
-                              "            display: flex;\n"
-                              "            flex-direction: column;\n"
-                              "            gap: 10px;\n"
-                              "        }\n"
-                              "        .row {\n"
-                              "            display: flex;\n"
-                              "            gap: 20px;\n"
-                              "        }\n"
-                              "        /* Grid layout structure - essential for DSL grid layouts */\n"
-                              "        .grid {\n"
-                              "            display: grid;\n"
-                              "            grid-template-columns: repeat(3, 1fr);\n"
-                              "            gap: 10px;\n"
-                              "        }\n"
-                              "        .grid-row {\n"
-                              "            display: contents;\n"
-                              "        }\n"
-                              "        /* Note: Visual styling (colors, shadows, etc.) should be added by the template designer */\n"
-                              "    </style>\n"
-                              "</head>\n"
-                              "<body>\n"
-                              "    {% block content %}{% endblock %}\n"
-                              "</body>\n"
-                              "</html>")
+                   :code "<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}{% endblock %}</title>
+    <style>
+        /* Essential structural CSS for UI DSL layouts */
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .row {
+            display: flex;
+            gap: 20px;
+        }
+        /* Grid layout structure - essential for DSL grid layouts */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .grid-row {
+            display: contents;
+        }
+        /* Note: Visual styling (colors, shadows, etc.) should be added by the template designer */
+    </style>
+</head>
+<body>
+    {% block content %}{% endblock %}
+</body>
+</html>"
                    :notes "Base HTML template with essential CSS for UI layouts"
                    :warning ""})
      :eyeball-fn (fn [code]
@@ -158,8 +158,99 @@
                       :issues issues
                       :notes "Checks for required HTML elements and attributes"}))
      :prompts {
-               "compile" "Compiles UI layout DSL input to Jinja2 template code.\n\nArguments:\n- dsl: The UI DSL input describing the layout structure using angle brackets for horizontal layouts, square brackets for vertical layouts, and grid layouts (required)\n\nExample:\nInput: [header <main aside> footer]\nOutput: <div class=\"column\"><div id=\"header\">{{ header }}</div><div class=\"row\"><div id=\"main\">{{ main }}</div><div id=\"aside\">{{ aside }}</div></div><div id=\"footer\">{{ footer }}</div></div>\n\nNotes:\n- The UI DSL uses angle brackets (<>) for horizontal layouts\n- Square brackets ([]) for vertical layouts\n- Responsive layouts use <?> syntax\n- Grid layouts use [# row1 | row2 | ...] syntax\n- IDs are used as slot names in the generated Jinja2 template\n- This is the Jinja2 target implementation of the UI DSL\n",
-               "header" "Gets the required header code for UI DSL templates targeting Jinja2.\n\nExample Output:\n<!DOCTYPE html>\n<html>\n<head>\n    <title>{% block title %}{% endblock %}</title>\n    <style>\n        /* Essential structural CSS for UI DSL layouts */\n        .column {\n            display: flex;\n            flex-direction: column;\n            gap: 10px;\n        }\n        .row {\n            display: flex;\n            gap: 20px;\n        }\n        /* Grid layout structure - essential for DSL grid layouts */\n        .grid {\n            display: grid;\n            grid-template-columns: repeat(3, 1fr);\n            gap: 10px;\n        }\n        .grid-row {\n            display: contents;\n        }\n        /* Note: Visual styling (colors, shadows, etc.) should be added by the template designer */\n    </style>\n</head>\n<body>\n    {% block content %}{% endblock %}\n</body>\n</html>\n\nNotes:\n- This header provides the essential structural CSS required for the UI DSL layouts to function correctly\n- The included CSS defines the core layout behavior (flex, grid) that makes the DSL's layout structure work\n- The header does NOT include visual styling (colors, shadows, borders, etc.) - these should be added by the template designer\n- The structural CSS ensures that:\n  - Column layouts stack vertically with proper spacing\n  - Row layouts arrange items horizontally with proper spacing\n  - Grid layouts maintain proper column alignment and spacing\n- When using this header, you should:\n  1. Keep the structural CSS intact to maintain layout functionality\n  2. Add your own visual styling to match your design requirements\n  3. Ensure any additional CSS doesn't override the essential layout properties\n- This separation ensures the DSL's layout intent is preserved while allowing design flexibility\n"
+               :compile "Compiles UI layout DSL input to Jinja2 template code.
+
+Arguments:
+- dsl: The UI DSL input describing the layout structure using angle brackets for horizontal layouts, square brackets for vertical layouts, and grid layouts (required)
+
+Example:
+Input: <header [nav main] footer>
+Output:
+<div class=\"row\">
+    <div id=\"header\">{{ header }}</div>
+    <div class=\"column\">
+        <div id=\"nav\">{{ nav }}</div>
+        <div id=\"main\">{{ main }}</div>
+    </div>
+    <div id=\"footer\">{{ footer }}</div>
+</div>
+
+Notes:
+- The UI DSL uses angle brackets (<>) for horizontal layouts
+- Square brackets ([]) for vertical layouts
+- Responsive layouts use <?> syntax
+- Grid layouts use [# row1 | row2 | ...] syntax
+- IDs are used as slot names in the generated Jinja2 template
+- The generated HTML uses flexbox and grid layouts
+- Each item becomes a div with an ID matching the item name
+- Items can have type hints using the syntax: item/type
+- The layout structure is preserved using appropriate CSS classes
+- This is the Jinja2 target implementation of the UI DSL"
+               :header "Gets the required header code for UI DSL templates targeting Jinja2.
+
+Example Output:
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}{% endblock %}</title>
+    <style>
+        /* Essential structural CSS for UI DSL layouts */
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .row {
+            display: flex;
+            gap: 20px;
+        }
+        /* Grid layout structure - essential for DSL grid layouts */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .grid-row {
+            display: contents;
+        }
+        /* Note: Visual styling (colors, shadows, etc.) should be added by the template designer */
+    </style>
+</head>
+<body>
+    {% block content %}{% endblock %}
+</body>
+</html>
+
+Notes:
+- This header provides the essential structural CSS required for the UI DSL layouts to function correctly
+- The included CSS defines the core layout behavior (flex, grid) that makes the DSL's layout structure work
+- The header does NOT include visual styling (colors, shadows, borders, etc.) - these should be added by the template designer
+- The structural CSS ensures that:
+  - Column layouts stack vertically with proper spacing
+  - Row layouts arrange items horizontally with proper spacing
+  - Grid layouts maintain proper column alignment and spacing
+- When using this header, you should:
+  1. Keep the structural CSS intact to maintain layout functionality
+  2. Add your own visual styling to match your design requirements
+  3. Ensure any additional CSS doesn't override the essential layout properties
+- This separation ensures the DSL's layout intent is preserved while allowing design flexibility"
+               :eyeball "Performs sanity checks on generated Jinja2 template code for the UI DSL.
+
+Checks:
+- Presence of required HTML elements (div)
+- Presence of Jinja2 template variables ({{ and }})
+- Presence of required attributes (class and id)
+- Proper nesting of layout elements
+
+Example:
+Input: Generated Jinja2 template code
+Output: Status and any issues found
+
+Notes:
+- Ensures the generated template has all required structural elements
+- Verifies proper use of Jinja2 template syntax
+- Checks for essential layout attributes
+- This is the Jinja2 target implementation of the UI DSL eyeball function"
                }
      }
     }

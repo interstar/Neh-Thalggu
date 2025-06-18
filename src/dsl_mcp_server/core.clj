@@ -10,23 +10,14 @@
             [clojure.string :as string]
             [dsl-mcp-server.web :as web]
             [clojure.tools.cli :refer [parse-opts]]
+            [dsl-mcp-server.schema :as schema]
             ))
 
-(declare DSLregistry)
 
-;; Load prompts from files
-(defn load-prompt [filename]
-  (let [resource (io/resource (str "prompts/" filename))]
-    (if resource
-      (-> resource
-          slurp
-          (json/parse-string true))
-      (throw (ex-info (str "Prompt file not found: " filename)
-                     {:filename filename})))))
 
 ;; Handler for listing available prompts
-(defn list-prompts-handler [req]
-  (let [prompts (for [[dsl-name dsl-info] (:dsls DSLregistry)
+(defn list-prompts-handler [registry req]
+  (let [prompts (for [[dsl-name dsl-info] (:dsls registry)
                      [target target-info] (:targets dsl-info)
                      [prompt-type prompt-content] (:prompts target-info)]
                  [(str prompt-type "-" dsl-name "-" target) prompt-content])]
@@ -35,55 +26,52 @@
      :body (json/generate-string (into {} prompts))}))
 
 ;; Debug endpoint to inspect the DSLregistry's prompts
-(defn debug-prompts-handler [req]
+(defn debug-prompts-handler [registry req]
   {:status 200
    :headers {"Content-Type" "application/json"}
    :body (json/generate-string 
-          (for [[dsl-name dsl-info] (:dsls DSLregistry)
+          (for [[dsl-name dsl-info] (:dsls registry)
                 [target target-info] (:targets dsl-info)]
             {:dsl dsl-name
              :target target
              :prompts (:prompts target-info)}))})
 
-;; Define the DSL registry by loading plugins
-(def DSLregistry
-  (let [plugins-dir (or (System/getenv "MCP_PLUGINS_DIR") "plugins")]
-    (println "Loading DSL plugins from:" plugins-dir)
-    (let [reg (plugin-loader/load-plugins plugins-dir)]
-      (println "DEBUG: DSLregistry after loading plugins:\n" (with-out-str (clojure.pprint/pprint reg)))
-      reg)))
-
 ;; MCP endpoint routes
-(defroutes app-routes
-  ;; MCP prompt endpoints
-  (GET "/prompts/list" [] list-prompts-handler)
-  
-  ;; Debug endpoint
-  (GET "/debug/prompts" [] debug-prompts-handler)
-  
-  ;; Prompt routes from registry
-  (apply routes (registry/get-prompt-routes DSLregistry))
-  
-  ;; Root endpoint
-  (GET "/" [] {:status 200
-               :headers {"Content-Type" "application/json"}
-               :body (json/generate-string (registry/get-tool-descriptions DSLregistry))})
-  
-  ;; Tool routes from registry
-  (apply routes (registry/get-tool-routes DSLregistry))
-  
-  ;; Overview endpoint
-  (GET "/overview" []
-    (let [explanation (-> (io/resource "overview.md") slurp)
-          dsls (->> DSLregistry
-                    :dsls
-                    (map (fn [[dsl-name dsl-info]]
-                           (str "- **" dsl-name "**: " (get-in dsl-info [:targets (first (keys (:targets dsl-info))) :description]))))
-                    (string/join "\n"))]
-      (json/generate-string {:explanation explanation :DSLs dsls})))
-  
-  ;; Not found handler
-  (route/not-found {:status 404 :body "Not Found"}))
+(defn app-routes [registry]
+  (let [prompt-routes (registry/get-prompt-routes registry)
+        tool-routes (registry/get-tool-routes registry)]
+    (println "DEBUG: prompt-routes count:" (count prompt-routes))
+    (println "DEBUG: tool-routes count:" (count tool-routes))
+    (routes
+     ;; MCP prompt endpoints
+     (GET "/prompts/list" [] (fn [req] (list-prompts-handler registry req)))
+     
+     ;; Debug endpoint
+     (GET "/debug/prompts" [] (fn [req] (debug-prompts-handler registry req)))
+     
+     ;; Prompt routes from registry
+     (apply routes prompt-routes)
+     
+     ;; Root endpoint
+     (GET "/" [] {:status 200
+                  :headers {"Content-Type" "application/json"}
+                  :body (json/generate-string (registry/get-tool-descriptions registry))})
+     
+     ;; Tool routes from registry
+     (apply routes tool-routes)
+     
+     ;; Overview endpoint
+     (GET "/overview" []
+       (let [explanation (-> (io/resource "overview.md") slurp)
+             dsls (->> registry
+                       :dsls
+                       (map (fn [[dsl-name dsl-info]]
+                              (str "- **" dsl-name "**: " (get-in dsl-info [:targets (first (keys (:targets dsl-info))) :description]))))
+                       (string/join "\n"))]
+         (json/generate-string {:explanation explanation :DSLs dsls})))
+     
+     ;; Not found handler
+     (route/not-found {:status 404 :body "Not Found"}))))
 
 (def cli-options
   [["-p" "--plugin-dir DIR" "Directory containing DSL plugins"
@@ -144,8 +132,12 @@
       (let [{:keys [plugin-dir mcp-port web-port]} options]
         (try
           (let [registry (plugin-loader/load-plugins plugin-dir)]
+            (println "DEBUG: registry after loading plugins in -main:" (keys registry))
+            (println "DEBUG: registry schema valid?" (schema/validate-registry registry))
+            (when-not (schema/validate-registry registry)
+              (println "DEBUG: registry schema errors:" (schema/explain-validation-error schema/registry-schema registry)))
             (println "Starting MCP server on port" mcp-port)
-            (jetty/run-jetty app-routes {:port mcp-port :join? false})
+            (jetty/run-jetty (app-routes registry) {:port mcp-port :join? false})
             (println "Starting web server on port" web-port)
             (web/start-web-server registry web-port))
           (catch Exception e

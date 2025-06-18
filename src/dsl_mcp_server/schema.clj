@@ -24,7 +24,6 @@
    [:issues [:vector string?]]
    [:notes string?]])
 
-;; Combined Plugin Schema (metadata + implementation)
 (def plugin-schema
   [:map
    [:name string?]
@@ -40,11 +39,15 @@
      string?
      [:map
       [:description string?]
+      [:prompts
+       [:map
+        [:compile string?]
+        [:header string?]
+        [:eyeball string?]]]
       [:compile-fn fn?]
       [:header-fn fn?]
       [:eyeball-fn fn?]]]]])
 
-;; Registry Schema
 (def registry-schema
   [:map
    [:dsls
@@ -59,7 +62,13 @@
          [:compile-fn fn?]
          [:header-fn fn?]
          [:eyeball-fn fn?]
-         [:prompts [:map-of string? string?]]]]]]]]
+         [:prompts
+          [:map
+           [:compile string?]
+           [:header string?]
+           [:eyeball string?]]]]]]
+      ]
+    ]]
    [:routes
     [:sequential fn?]]
    [:prompt-routes
@@ -85,7 +94,7 @@
   [schema value]
   (-> (m/explain schema value)
       (me/humanize)))
-
+      
 ;; Example usage:
 (comment
   ;; Validate plugin
@@ -101,12 +110,13 @@
     :generate-header (fn [] "header")
     :generate-template (fn [x] x)
     :handle-parse-error (fn [x] x)})
-  
+
   ;; Validate registry
   (validate-registry
    {:dsls {"test-dsl" {:targets {"haxe" {:description "Haxe target"
                                          :compile-fn (fn [x] x)
                                          :header-fn (fn [] "header")
                                          :eyeball-fn (fn [x] x)}}}}
-    :prompts {"compile-test-dsl-haxe" "prompts/compile.json"}
+    :prompt-routes [(fn [req] {:status 200 :body "test"})]
     :routes [(fn [req] {:status 200 :body "test"})]}))
+

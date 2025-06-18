@@ -40,7 +40,10 @@
       (let [get-plugin-fn (load-file (.getPath plugin-file))
             plugin (get-plugin-fn tag-path)]
         (if (m/validate schema/plugin-schema plugin)
-          (assoc plugin :name plugin-name)
+          (-> plugin
+              (assoc :name plugin-name)
+              (update-in [:targets] #(update-vals % (fn [target]
+                                                    (update target :prompts update-keys keyword)))))
           (do
             (println "Plugin" plugin-name "does not match schema:")
             (println (m/explain schema/plugin-schema plugin))
@@ -65,7 +68,7 @@
                                            :prompts (:prompts target-info)))
                          reg
                          targets)))
-              {:dsls {} :prompts {} :routes []}
+              {:dsls {} :prompts {} :routes [] :prompt-routes []}
               (->> (.listFiles dir)
                    (filter #(.isDirectory %))
                    (map #(.getName %))

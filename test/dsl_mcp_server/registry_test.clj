@@ -5,10 +5,15 @@
             [malli.core :as m]
             [cheshire.core :as json]
             [dsl-mcp-server.plugin-loader :as loader]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [clojure.pprint :as pprint]))
 
 (def test-plugin-dir "plugins")
 (def test-registry (loader/load-plugins test-plugin-dir))
+
+(println "test-registry keys:" (keys test-registry))
+(clojure.pprint/pprint test-registry)
+
 
 (deftest registry-schema-test
   (testing "Test registry matches schema"
@@ -37,7 +42,6 @@
     (let [descriptions (registry/get-tool-descriptions test-registry)]
       (is (map? descriptions))
       (is (contains? descriptions :tools))
-      (is (contains? descriptions :prompts))
       (is (contains? descriptions :resources))
       (let [tools (:tools descriptions)]
         (is (sequential? tools))
@@ -50,7 +54,7 @@
                         (for [[dsl-name dsl-info] (:dsls test-registry)
                               [target target-info] (:targets dsl-info)
                               [prompt-type prompt-content] (:prompts target-info)]
-                          [(str prompt-type "-" dsl-name "-" target) prompt-content]))]
+                          [(str (name prompt-type) "-" dsl-name "-" target) prompt-content]))]
       (is (map? prompts))
       (is (some #(clojure.string/starts-with? % "compile-") (keys prompts)))
       (is (every? string? (vals prompts))))))

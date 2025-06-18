@@ -10,7 +10,9 @@
             [dsl-mcp-server.registry :as registry]
             [cheshire.core :as json]
             [clj-http.client :as clj-http]
-            [markdown.core :as md]))
+            [markdown.core :as md]
+            [clojure.pprint :refer [pprint]]
+            [clojure.core :refer [with-out-str]]))
 
 (defn render-page-header [title]
   [:head
@@ -94,6 +96,36 @@
             (html rendered-markdown)]
           (render-dsls-section registry)]])))
 
+(defn render-registry-debug [registry]
+  (html5
+    [:head
+      [:title "Registry Debug View"]
+      [:link {:rel "stylesheet" :href "/css/style.css"}]
+      [:style "
+        .registry-debug {
+          font-family: monospace;
+          white-space: pre-wrap;
+          background: #f5f5f5;
+          padding: 20px;
+          border-radius: 5px;
+          margin: 20px;
+        }
+        .registry-key {
+          color: #2c3e50;
+          font-weight: bold;
+        }
+        .registry-value {
+          color: #27ae60;
+        }
+      "]]
+    [:body
+      [:div.container
+        [:h1 "Registry Debug View"]
+        [:a.back-link {:href "/"} "Back to Overview"]
+        [:div.registry-debug
+          [:pre
+            (with-out-str (clojure.pprint/pprint registry))]]]]))
+
 (defn handle-compile [registry dsl-name target dsl-input]
   (try
     (let [dsl-info (get-in registry [:dsls dsl-name])
@@ -140,6 +172,7 @@
   (defroutes web-routes
     (GET "/" [] (render-overview registry))
     (GET "/dsl/:dsl-name" [dsl-name] (render-dsl-page registry dsl-name))
+    (GET "/debug/registry" [] (render-registry-debug registry))
     (POST "/compile/:dsl-name" [dsl-name :as request]
       (let [body (json/parse-string (slurp (:body request)) true)
             target (:target body)

@@ -79,8 +79,54 @@ class {{name}} implements ISpeaker {
                         :issues issues
                         :notes "Checks for required interface implementation, speak() method, and trace statement"}))
        :prompts {
-                 "compile" "Compiles sentences of the form 'Name says Message' into Haxe classes with a speak() method that prints the Message.\n\nArguments:\n- dsl: The DSL input in the format 'Name says Message' (required)\n\nExample:\nInput: Bob says Hello Teenage America\nOutput: Haxe class Bob implements Speaker with speak() method that prints 'Hello Teenage America'.\n\nNotes:\n- The generated Haxe class will implement the Speaker interface\n- The class will have a default constructor and a speak() method\n- The speak() method will print the message using trace()\n- This is the Haxe target implementation of the speak DSL\n",
-                 "header" "Gets the required Haxe interface and dependencies for the speak DSL.\n\nExample Output:\n// Interface for all speakers\ninterface Speaker {\n    public function speak():Void;\n}\n\nNotes:\n- This header provides the Speaker interface required by all speak DSL generated classes\n- The interface defines a speak() method that returns Void\n- This is the Haxe target implementation of the speak DSL header\n"
+                 :compile "Compiles sentences of the form 'Name says Message' into Haxe classes with a speak() method that prints the Message.
+
+Arguments:
+- dsl: The DSL input in the format 'Name says Message' (required)
+
+Example:
+Input: Bob says Hello Teenage America
+Output:
+// DSL: Bob says Hello Teenage America
+class Bob implements ISpeaker {
+    public function new() {}
+    public function speak():Void {
+        trace(\"Hello Teenage America\");
+    }
+}
+
+Notes:
+- The generated Haxe class will implement the ISpeaker interface
+- The class will have a default constructor and a speak() method
+- The speak() method will print the message using trace()
+- This is the Haxe target implementation of the speak DSL"
+                 :header "Gets the required Haxe interface and dependencies for the speak DSL.
+
+Example Output:
+// Interface for all speakers
+interface ISpeaker {
+    public function speak():Void;
+}
+
+Notes:
+- This header provides the Speaker interface required by all speak DSL generated classes
+- The interface defines a speak() method that returns Void
+- This is the Haxe target implementation of the speak DSL header"
+                 :eyeball "Performs sanity checks on generated Haxe code for the speak DSL.
+
+Checks:
+- Class implements ISpeaker interface
+- Class has a speak() method
+- Class has a public constructor
+
+Example:
+Input: Generated Haxe code
+Output: Status and any issues found
+
+Notes:
+- Ensures generated code follows the required structure
+- Verifies all necessary components are present
+- This is the Haxe target implementation of the speak DSL eyeball function"
                  }
        }
       }
