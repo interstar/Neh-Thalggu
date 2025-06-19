@@ -40,8 +40,6 @@
 (defn app-routes [registry]
   (let [prompt-routes (registry/get-prompt-routes registry)
         tool-routes (registry/get-tool-routes registry)]
-    (println "DEBUG: prompt-routes count:" (count prompt-routes))
-    (println "DEBUG: tool-routes count:" (count tool-routes))
     (routes
      ;; MCP prompt endpoints
      (GET "/prompts/list" [] (fn [req] (list-prompts-handler registry req)))
