@@ -70,3 +70,45 @@
       (is (some #{"Missing speak() method"} (:issues result)))
       (is (some #{"Missing System.out.println statement"} (:issues result)))
       ))) 
+
+;; Python target tests
+(deftest get-header-python-test
+  (testing "Python header generation"
+    (let [result ((-> speak-dsl :targets (get "python") :header-fn))]
+      (is (:success result))
+      (is (clojure.string/includes? (:code result) "from abc import ABC, abstractmethod"))
+      (is (clojure.string/includes? (:code result) "class ISpeaker(ABC)"))
+      (is (clojure.string/includes? (:code result) "@abstractmethod"))
+      (is (clojure.string/includes? (:code result) "def speak(self)")))))
+
+(deftest compile-to-python-test
+  (testing "Valid Python input"
+    (let [input "Bob says Hello Teenage America"
+          result ((-> speak-dsl :targets (get "python") :compile-fn) input)]      
+      (is (compile-success? result))
+      (is (clojure.string/includes? (:code result) "class Bob(ISpeaker)"))
+      (is (clojure.string/includes? (:code result) "def __init__(self)"))
+      (is (clojure.string/includes? (:code result) "def speak(self)"))
+      (is (clojure.string/includes? (:code result) "print(")))))
+
+(deftest eyeball-python-test
+  (testing "Valid Python code"
+    (let [code "class TestSpeaker(ISpeaker):
+                 def __init__(self):
+                     pass
+                 def speak(self):
+                     print(\"Hello\")"
+          result ((-> speak-dsl :targets (get "python") :eyeball-fn) code)]
+      (is (= "seems ok" (:status result)))
+      (is (empty? (:issues result)))))
+
+  (testing "Multiple Python issues"
+    (let [code "class TestSpeaker:"
+          result ((-> speak-dsl :targets (get "python") :eyeball-fn) code)]
+      (is (= "issues" (:status result)))
+      (is (= 4 (count (:issues result))))
+      (is (some #{"Class does not inherit from ISpeaker"} (:issues result)))
+      (is (some #{"Missing __init__ constructor"} (:issues result)))
+      (is (some #{"Missing speak() method"} (:issues result)))
+      (is (some #{"Missing print statement"} (:issues result)))
+      ))) 
