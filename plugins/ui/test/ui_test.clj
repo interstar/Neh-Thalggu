@@ -3,7 +3,8 @@
             [dsl-mcp-server.plugin-loader :as loader]
             [malli.core :as m]
             [dsl-mcp-server.schema :as schema]
-            [instaparse.core :as insta]))
+            [instaparse.core :as insta]
+            [clojure.string :as string]))
 
 (def plugin-dir "plugins")
 (def ui-dsl (loader/load-plugin plugin-dir "ui"))
@@ -12,8 +13,7 @@
 (println (m/validate schema/plugin-schema ui-dsl))
 
 (def compile-fn (-> ui-dsl :targets (get "jinja2") :compile-fn))
-
-
+(def haxe-compile-fn (-> ui-dsl :targets (get "haxe") :compile-fn))
 
 (deftest schema-checking
   (testing "Schema check"
@@ -132,4 +132,72 @@
   (testing "Invalid input compilation"
     (let [result (compile-fn "<a b")]
       (is (not (:success result)))
-      (is (:error result))))) 
+      (is (:error result)))))
+
+(deftest haxe-grammar-tests
+  (testing "Haxe: Basic horizontal layout"
+    (let [result (haxe-compile-fn "<a b c>")
+          code (string/join "\n" (:code result))]
+      (is (:success result))
+      (is (re-find #"class UIViewGraph" code))
+      (is (re-find #"HLayout" code))))
+
+  (testing "Haxe: Basic vertical layout"
+    (let [result (haxe-compile-fn "[d e f]")
+          code (string/join "\n" (:code result))]
+      (is (:success result))
+      (is (re-find #"VLayout" code))))
+
+  (testing "Haxe: Responsive layout"
+    (let [result (haxe-compile-fn "<? g h i j>")
+          code (string/join "\n" (:code result))]
+      (is (:success result))
+      (is (re-find #"ResponsiveLayout" code))))
+
+  (testing "Haxe: Grid layout"
+    (let [result (haxe-compile-fn "[# a b c | d e f]")
+          code (string/join "\n" (:code result))]
+      (is (:success result))
+      (is (re-find #"GridLayout" code))))
+
+  (testing "Haxe: Nested layouts"
+    (let [result (haxe-compile-fn "[text1 <p1 p2 p3> [# x y z | a b <d [e f g]>] ]")
+          code (string/join "\n" (:code result))]
+      (is (:success result))
+      (is (re-find #"VLayout" code))
+      (is (re-find #"HLayout" code))
+      (is (re-find #"GridLayout" code)))))
+
+(deftest haxe-invalid-layouts
+  (testing "Haxe: Invalid layouts should fail"
+    (is (not (:success (haxe-compile-fn "<a b"))))
+    (is (not (:success (haxe-compile-fn "[a b"))))
+    (is (not (:success (haxe-compile-fn "[# a b"))))
+    (is (not (:success (haxe-compile-fn "<? a b"))))))
+
+(deftest haxe-leaf-declarations
+  (testing "Haxe: Leaf declarations present"
+    (let [result (haxe-compile-fn "[<a [b <c1 c2 c3>]> <d [e f]>]")
+          code (string/join "\n" (:code result))]
+      (is (:success result))
+      (is (re-find #"var box_a_\d+" code))
+      (is (re-find #"var box_b_\d+" code))
+      (is (re-find #"var box_c1_\d+" code))
+      (is (re-find #"var box_c2_\d+" code))
+      (is (re-find #"var box_c3_\d+" code))
+      (is (re-find #"var box_d_\d+" code))
+      (is (re-find #"var box_e_\d+" code))
+      (is (re-find #"var box_f_\d+" code)))))
+
+(deftest haxe-eyeball-function
+  (testing "Haxe: Eyeball function validation"
+    (let [eyeball-fn (-> ui-dsl :targets (get "haxe") :eyeball-fn)
+          valid-code "class UIViewGraph { private var root:IBox; public function getRoot():IBox { return root; } public function getLeaves():Map<String, FixedBox> { return leaves; } }"
+          invalid-code "class SomeOtherClass { }"
+          valid-result (eyeball-fn valid-code)
+          invalid-result (eyeball-fn invalid-code)]
+      (is (fn? eyeball-fn))
+      (is (= "issues" (:status valid-result)))
+      (is (= "issues" (:status invalid-result)))
+      (is (vector? (:issues valid-result)))
+      (is (vector? (:issues invalid-result)))))) 

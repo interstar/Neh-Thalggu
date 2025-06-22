@@ -1,4 +1,4 @@
-# MCP DSL Server Project
+# MCP DSL Server Overview
 
 ## Project Overview
 
@@ -22,7 +22,43 @@ Typical examples of DSLs might be languages to define data-schemas. Or UI layout
 
 6) when the AI has successfully incorporated the generated code into the code file, it sends that entire file back to an "eyeball" function on the MCP server. This is a basic linter / "sanity checker" function provided by the makers of the DSL. Its purpose is not to be a comprehensive analyst, but to check for obvious issues such as the AI failing to have incorporated the output of the compiler into the codebase. 
 
-## Current Architecture
+### On the server
+
+Therefore, for each DSL and target on the server, we provide 3 MCP tools :
+
+- **Compile**: Transforms DSL input into target language code.
+  - Returns JSON corresponding to this EDN schema
+```
+ (def compile-result-schema
+  [:map
+   [:success boolean?]
+   [:code [:sequential string?]]
+   [:notes string?]
+   [:warning string?]
+   [:error {:optional true} string?]])
+```
+
+- **Header**: Provides necessary precondition / header code for DSLs.
+  - Returns JSON corresponding to this EDN schema :
+```
+(def header-result-schema
+  [:map
+   [:success boolean?]
+   [:code string?]
+   [:notes string?]
+   [:warning string?]]) 
+```
+
+- **Eyeball**: Checks the integration of the generated code into a main file, for common issues.
+  - Returns JSON corresponding to this EDN schema :
+ 
+```(def eyeball-result-schema
+  [:map
+   [:status [:enum "seems ok" "issues"]]
+   [:issues [:vector string?]]
+   [:notes string?]])
+```
+
 
 ### Server Structure
 - `src/dsl_mcp_server/core.clj`: Main server implementation

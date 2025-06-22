@@ -20,18 +20,9 @@
     (include-css "/css/style.css")
     [:script {:src "/js/compile.js"}]])
 
-(defn render-dsl-description [dsl-info target]
-  [:div.dsl-details
-    [:h2 "Description"]
-    [:p (get-in dsl-info [:targets target :description])]
-    [:h2 "Example"]
-    [:pre.example
-      (get-in dsl-info [:targets target :example])]
-    [:a.back-link {:href "/"} "Back to DSL List"]])
-
 (defn render-compile-form [dsl-name targets]
   [:div.compile-section
-    [:h2 "Try it out"]
+    [:h2 "Try It Out"]
     [:form#compile-form {:action (str "/compile/" dsl-name)}
       [:div.input-group
         [:label {:for "dsl-input"} "DSL Input:"]
@@ -58,6 +49,67 @@
           [:pre.output-area
             [:code#header-output {:class "language-clojure"} "Header code will appear here..."]]]]]])
 
+(defn render-eyeball-form [dsl-name targets]
+  [:div.eyeball-section
+    [:h2 "Test Eyeball Function"]
+    [:form#eyeball-form {:action (str "/eyeball/" dsl-name)}
+      [:div.input-group
+        [:label {:for "eyeball-input"} "Generated Code to Validate:"]
+        [:textarea#eyeball-input {:name "code" :rows "10" :cols "50" :placeholder "Paste the generated code here to validate it..."}]]
+      [:div.eyeball-controls
+        [:select#eyeball-target {:name "target"}
+          (for [target targets]
+            [:option {:value target} target])]
+        [:button {:type "submit"} "Validate"]]
+      [:div#eyeball-output-container.output-container
+        [:div.output-group
+          [:label {:for "eyeball-output"} "Validation Result:"]
+          [:pre.output-area
+            [:code#eyeball-output {:class "language-clojure"} "Validation result will appear here..."]]]
+        [:div#eyeball-notes.notes-section
+          [:div#eyeball-warnings.warnings {:style "display: none"}]
+          [:div#eyeball-notes-text.notes {:style "display: none"}]]]]])
+
+(defn render-mcp-endpoints [dsl-name targets]
+  [:div.mcp-endpoints
+    [:h2 "MCP Endpoints"]
+    [:p "These are the MCP endpoints available for this DSL:"]
+    [:div.endpoint-group
+      [:h3 "Compile Endpoint"]
+      [:pre
+        [:code (str "POST /compile/" dsl-name)
+         "\nContent-Type: application/json"
+         "\nBody: {\"dsl\": \"your dsl input\", \"target\": \"target_language\"}"]]]
+    [:div.endpoint-group
+      [:h3 "Header Endpoint"]
+      [:pre
+        [:code (str "GET /header/" dsl-name "/{target}")]]]
+    [:div.endpoint-group
+      [:h3 "Eyeball Endpoint"]
+      [:pre
+        [:code (str "POST /eyeball/" dsl-name)
+         "\nContent-Type: application/json"
+         "\nBody: {\"code\": \"generated code to validate\", \"target\": \"target_language\"}"]]]
+    [:div.endpoint-group
+      [:h3 "Available Targets"]
+      [:ul
+        (for [target targets]
+          [:li target])]]])
+
+(defn render-documentation [dsl-name]
+  (try
+    (let [readme-path (str "plugins/" dsl-name "/README.md")
+          readme-content (slurp readme-path)
+          rendered-markdown (md/md-to-html-string readme-content)]
+      [:div.documentation
+        [:h2 "Documentation"]
+        [:div.markdown-content
+          (html rendered-markdown)]])
+    (catch Exception e
+      [:div.documentation
+        [:h2 "Documentation"]
+        [:p "No documentation found for this DSL."]])))
+
 (defn render-dsl-page [registry dsl-name]
   (let [dsl-info (get-in registry [:dsls dsl-name])
         targets (keys (:targets dsl-info))
@@ -68,8 +120,12 @@
         [:body
           [:div.container
             [:h1 dsl-name]
-            (render-dsl-description dsl-info first-target)
-            (render-compile-form dsl-name targets)]]])))
+            (render-compile-form dsl-name targets)
+            (render-eyeball-form dsl-name targets)
+            (render-mcp-endpoints dsl-name targets)
+            (render-documentation dsl-name)
+            [:div.navigation
+              [:a.back-link {:href "/"} "Back to DSL List"]]]]])))
 
 (defn render-dsl-item [dsl-name dsl-info]
   [:div.dsl-item
@@ -168,6 +224,29 @@
               {:success false 
                :error (str "Error generating header: " (.getMessage e))})})))
 
+(defn handle-eyeball [registry dsl-name target code]
+  (try
+    (let [dsl-info (get-in registry [:dsls dsl-name])
+          eyeball-fn (get-in dsl-info [:targets target :eyeball-fn])]
+      (if eyeball-fn
+        (let [result (eyeball-fn code)]
+          {:status 200
+           :headers {"Content-Type" "application/json"}
+           :body (json/generate-string result)})
+        {:status 400
+         :headers {"Content-Type" "application/json"}
+         :body (json/generate-string 
+                {:status "issues"
+                 :issues ["No eyeball function found for this DSL/target combination"]
+                 :notes "Eyeball validation not available"})}))
+    (catch Exception e
+      {:status 500
+       :headers {"Content-Type" "application/json"}
+       :body (json/generate-string 
+              {:status "issues"
+               :issues [(str "Error during validation: " (.getMessage e))]
+               :notes "Validation failed due to an error"})})))
+
 (defn create-web-routes [registry]
   (defroutes web-routes
     (GET "/" [] (render-overview registry))
@@ -180,6 +259,11 @@
         (handle-compile registry dsl-name target dsl-input)))
     (GET "/header/:dsl-name/:target" [dsl-name target]
       (handle-header registry dsl-name target))
+    (POST "/eyeball/:dsl-name" [dsl-name :as request]
+      (let [body (json/parse-string (slurp (:body request)) true)
+            target (:target body)
+            code (:code body)]
+        (handle-eyeball registry dsl-name target code)))
     (route/resources "/")
     (route/not-found "Page not found")))
 

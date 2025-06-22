@@ -1,55 +1,65 @@
 # MCP DSL Server Overview
 
+## Project Overview
+
 This server provides a set of tools for working with a number of domain-specific languages (DSLs).
 
-The overall goal is to explore a new paradigm for software development that combines the power of AI-assisted coding with formal, domain-specific languages (DSLs).
 
-The core idea is that while AI can help us write code, much of what we write in our programming languages is still "boilerplate" that can be eliminated if we express requirements both concisely AND unambiguously, using small, focused DSLs. These can include notations for data schemas, UI layouts, wire protocols, state-machines etc.
+This project explores a new paradigm for software development that combines the power of AI-assisted coding with formal, domain-specific languages (DSLs). The core idea is that while AI can help us write code, much of what we write is still "boilerplate". We can compress this significantly by using small, focused DSLs that capture the essential aspects of what we want to express. Then the AI can delegate much of the work of creating code to dedicated compilers of these DSLs.
 
-The DSL lets us specify the requirements very precisely. And a formal compiler can free the AI from the burden of actually turning that part of the requirement into code. While ensuring correctness and consistency.
+The project implements this vision through a Model-Context Protocol (MCP) server that provides access to various DSL compilers. These compilers transform concise DSL inputs into working code in target languages.
 
-By making the compilers for these DSLs into MCP tools available to the AI, we integrate use of the DSLs seamlessly into a chat-driven collaboration between human and agentic AI programming assistant.
+Typical examples of DSLs might be languages to define data-schemas. Or UI layouts. Or state-machines. Or grammars. Etc.
 
-### Typical Workflow
+### Example workflow.
 
-As part of a chat between the user and AI coding-assistant, the user will give the AI a snippet written in one of these DSLs.
+1) the user asks the AI to help write an application and presents a specification of the data-schema for the application in the form of a snippet of DSL and indicates the target language.
 
-The AI sends the snippet to the appropriate "compiler" tool and will get either an error message, or a piece of code back.
+2) the AI recognises that it should use the compiler available as an MCP tool, rather than trying to interpret the snippet itself.
 
-If there was no error, the AI now slots this code into the larger code-base being worked on.
+3) so the AI makes an MCP call to the appropriate "compile" tool (according to which DSL and which target language), passing the snippet. It receives back a larger chunk of code in the target language (say Java) which contains multiple class definitions.
 
-For example, the user may give a fragment of a data-schema DSL which the compiler can turn into a number of Java class definitions. The AI will get these definitions back from the compiler, and then integrate them into the larger program being worked on.
+4) the AI ALSO calls the MCP server asking for the "header" for this DSL and target language. The header contains information which is needed by the generated code. For example the compiler might return four new class definitions from the snippet of DSL. The header will contain information such as dependencies, and example "include statements" for the appropriate dependencies. Were the target to be Python, the header might include example requirements from PyPI.
 
-The AI will also check the "header" tool for the DSL and target language. This tool provides extra information about required dependencies or contexts for the code produced by the compiler.
+5) The AI then figures out how to slot both these class definitions, and information from the header, into the codebase it is working on with the user
 
-For example, the data-schema has been compiled into Java classes, but those classes may depend on a particular libary. The header tool would note this fact and offer an example of the necessary include statements that would need to be added to the file.
-
-Finally, the AI should send the file it has created back to the MCP server to an "eyeball" tool. This is a specific kind of linter provided by the DSL makers, which can identify potential or common issues that arise when a language model has integrated the code fragment into the main codebase. This is not a comprehensive linting of the file. But can provide some extra warnings and advice to help the smooth integration of generated code into the codebase. 
-
+6) when the AI has successfully incorporated the generated code into the code file, it sends that entire file back to an "eyeball" function on the MCP server. This is a basic linter / "sanity checker" function provided by the makers of the DSL. Its purpose is not to be a comprehensive analyst, but to check for obvious issues such as the AI failing to have incorporated the output of the compiler into the codebase. 
 
 ### On the server
 
-Therefore, for each DSL on the server, we provide 3 MCP tools :
+Therefore, for each DSL and target on the server, we provide 3 MCP tools :
 
 - **Compile**: Transforms DSL input into target language code.
-  - Returns:
-    - `success`: Boolean indicating if compilation succeeded
-    - `code`: The generated code
-    - `notes`: Additional information about the generated code
-    - `warnings`: Any warnings about the generated code
-    - `error`: Error message if compilation failed
+  - Returns JSON corresponding to this EDN schema
+```
+ (def compile-result-schema
+  [:map
+   [:success boolean?]
+   [:code [:sequential string?]]
+   [:notes string?]
+   [:warning string?]
+   [:error {:optional true} string?]])
+```
 
 - **Header**: Provides necessary precondition / header code for DSLs.
-  - Returns:
-    - `success`: Boolean indicating if header generation succeeded
-    - `code`: The required header code
-    - `notes`: Additional information about the header code
+  - Returns JSON corresponding to this EDN schema :
+```
+(def header-result-schema
+  [:map
+   [:success boolean?]
+   [:code string?]
+   [:notes string?]
+   [:warning string?]]) 
+```
 
 - **Eyeball**: Checks the integration of the generated code into a main file, for common issues.
-  - Returns:
-    - `status`: Either "seems ok" or "issues"
-    - `issues`: List of issues found, if any
-    - `notes`: Additional information about the code check
-
+  - Returns JSON corresponding to this EDN schema :
+ 
+```(def eyeball-result-schema
+  [:map
+   [:status [:enum "seems ok" "issues"]]
+   [:issues [:vector string?]]
+   [:notes string?]])
+```
 
 For more details, refer to the individual tool descriptions. 
