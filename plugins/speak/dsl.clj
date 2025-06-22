@@ -11,7 +11,7 @@
 
 (def parser (insta/parser grammar))
 
-(defn compile-to-haxe [input tag-path-fn]
+(defn compile-to-java [input tag-path-fn]
   (try
     (let [parse-result (parser input)]
       (if (insta/failure? parse-result)
@@ -26,14 +26,14 @@
               message (second message-node)]
           {:success true
            :code [(render "
-class {{name}} implements ISpeaker {
-   public function new() {}
-   public function speak():Void {
-      trace(\"{{name}} says {{message}}\");
+public class {{name}} implements ISpeaker {
+   public {{name}}() {}
+   public void speak() {
+      System.out.println(\"{{name}} says {{message}}\");
    }
 }
 " {:name name :message message})]
-           :notes "Generated Haxe class implementing ISpeaker interface"
+           :notes "Generated Java class implementing ISpeaker interface"
            :warning ""})))
     (catch Exception e
       {:success false
@@ -56,13 +56,13 @@ class {{name}} implements ISpeaker {
               "<SPACE>" "#'\\s+'"}
       :start "S"}
      :targets
-     {"haxe"
-      {:description "Generate Haxe code for saying Hello"
-       :compile-fn (fn [s] (compile-to-haxe s tag-path))
+     {"java"
+      {:description "Generate Java code for saying Hello"
+       :compile-fn (fn [s] (compile-to-java s tag-path))
        :header-fn (fn []
                     {:success true
-                     :code (str "interface ISpeaker {\n"
-                                "    public function speak():Void;\n"
+                     :code (str "public interface ISpeaker {\n"
+                                "    void speak();\n"
                                 "}")
                      :notes "Required interface for speaker classes"
                      :warning ""})
@@ -70,16 +70,18 @@ class {{name}} implements ISpeaker {
                      (let [issues (cond-> []
                                     (not (re-find #"implements ISpeaker" code))
                                     (conj "Class does not implement ISpeaker interface")
-                                    (not (re-find #"public function speak\(\)" code))
+                                    (not (re-find #"public void speak\(\)" code))
                                     (conj "Missing speak() method")
-                                    (not (re-find #"new\(\)" code))
+                                    (not (re-find #"public [A-Za-z]+\(\)" code))
                                     (conj "Missing public constructor")
+                                    (not (re-find #"System\.out\.println" code))
+                                    (conj "Missing System.out.println statement")
                                     )]
                        {:status (if (empty? issues) "seems ok" "issues")
                         :issues issues
-                        :notes "Checks for required interface implementation, speak() method, and trace statement"}))
+                        :notes "Checks for required interface implementation, speak() method, constructor, and System.out.println statement"}))
        :prompts {
-                 :compile "Compiles sentences of the form 'Name says Message' into Haxe classes with a speak() method that prints the Message.
+                 :compile "Compiles sentences of the form 'Name says Message' into Java classes with a speak() method that prints the Message.
 
 Arguments:
 - dsl: The DSL input in the format 'Name says Message' (required)
@@ -88,45 +90,46 @@ Example:
 Input: Bob says Hello Teenage America
 Output:
 // DSL: Bob says Hello Teenage America
-class Bob implements ISpeaker {
-    public function new() {}
-    public function speak():Void {
-        trace(\"Hello Teenage America\");
+public class Bob implements ISpeaker {
+    public Bob() {}
+    public void speak() {
+        System.out.println(\"Bob says Hello Teenage America\");
     }
 }
 
 Notes:
-- The generated Haxe class will implement the ISpeaker interface
+- The generated Java class will implement the ISpeaker interface
 - The class will have a default constructor and a speak() method
-- The speak() method will print the message using trace()
-- This is the Haxe target implementation of the speak DSL"
-                 :header "Gets the required Haxe interface and dependencies for the speak DSL.
+- The speak() method will print the message using System.out.println()
+- This is the Java target implementation of the speak DSL"
+                 :header "Gets the required Java interface and dependencies for the speak DSL.
 
 Example Output:
 // Interface for all speakers
-interface ISpeaker {
-    public function speak():Void;
+public interface ISpeaker {
+    void speak();
 }
 
 Notes:
 - This header provides the Speaker interface required by all speak DSL generated classes
-- The interface defines a speak() method that returns Void
-- This is the Haxe target implementation of the speak DSL header"
-                 :eyeball "Performs sanity checks on generated Haxe code for the speak DSL.
+- The interface defines a speak() method that returns void
+- This is the Java target implementation of the speak DSL header"
+                 :eyeball "Performs sanity checks on generated Java code for the speak DSL.
 
 Checks:
 - Class implements ISpeaker interface
 - Class has a speak() method
 - Class has a public constructor
+- Method uses System.out.println for output
 
 Example:
-Input: Generated Haxe code
+Input: Generated Java code
 Output: Status and any issues found
 
 Notes:
 - Ensures generated code follows the required structure
 - Verifies all necessary components are present
-- This is the Haxe target implementation of the speak DSL eyeball function"
+- This is the Java target implementation of the speak DSL eyeball function"
                  }
        }
       }

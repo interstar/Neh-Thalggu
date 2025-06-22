@@ -1,6 +1,6 @@
 # Speak DSL
 
-The Speak DSL is a simple domain-specific language for generating Haxe classes that can "speak" messages.
+The Speak DSL is a simple "Hello World" example of a domain-specific language that generates Java classes that can "speak" messages.
 
 ## Syntax
 
@@ -22,13 +22,13 @@ Where:
 Alice says Hello World
 ```
 
-This generates a Haxe class named `Alice` that implements the `ISpeaker` interface:
+This generates a Java class named `Alice` that implements the `ISpeaker` interface:
 
-```haxe
-class Alice implements ISpeaker {
-   public function new() {}
-   public function speak():Void {
-      trace("Alice says Hello World");
+```java
+public class Alice implements ISpeaker {
+   public Alice() {}
+   public void speak() {
+      System.out.println("Alice says Hello World");
    }
 }
 ```
@@ -52,25 +52,25 @@ Announcer says The show will begin in 5 minutes
 Each generated class will have:
 
 1. **Class Declaration**: Implements the `ISpeaker` interface
-2. **Constructor**: A public `new()` method
-3. **Speak Method**: A `speak()` method that prints the message using `trace()`
+2. **Constructor**: A public constructor with the same name as the class
+3. **Speak Method**: A `speak()` method that prints the message using `System.out.println()`
 
 ## Required Interface
 
 All generated classes implement the `ISpeaker` interface:
 
-```haxe
-interface ISpeaker {
-    public function speak():Void;
+```java
+public interface ISpeaker {
+    void speak();
 }
 ```
 
-## Usage in Haxe
+## Usage in Java
 
 To use a generated speaker class:
 
-```haxe
-var speaker = new Alice();
+```java
+ISpeaker speaker = new Alice();
 speaker.speak(); // Outputs: "Alice says Hello World"
 ```
 
@@ -84,4 +84,4 @@ The DSL will return an error if:
 ## Target Language
 
 Currently supports:
-- **Haxe**: Generates Haxe classes with trace output 
+- **Java**: Generates Java classes with System.out.println output 

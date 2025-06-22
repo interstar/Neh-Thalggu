@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
+    const form = document.querySelector('#compile-form');
+    const eyeballForm = document.querySelector('#eyeball-form');
     const outputContainer = document.getElementById('output-container');
     const additionalOutputs = document.getElementById('additional-outputs');
     const warningsDiv = document.getElementById('warnings');
@@ -7,6 +8,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const errorDiv = document.getElementById('error');
     const headerButton = document.getElementById('get-header');
     const headerOutput = document.getElementById('header-output');
+
+    // Eyeball form elements
+    const eyeballOutput = document.getElementById('eyeball-output');
+    const eyeballWarnings = document.getElementById('eyeball-warnings');
+    const eyeballNotes = document.getElementById('eyeball-notes-text');
 
     // Function to clear all messages
     function clearMessages() {
@@ -16,6 +22,14 @@ document.addEventListener('DOMContentLoaded', function() {
         warningsDiv.textContent = '';
         notesDiv.textContent = '';
         errorDiv.textContent = '';
+    }
+
+    // Function to clear eyeball messages
+    function clearEyeballMessages() {
+        eyeballWarnings.style.display = 'none';
+        eyeballNotes.style.display = 'none';
+        eyeballWarnings.textContent = '';
+        eyeballNotes.textContent = '';
     }
 
     // Function to clear all outputs
@@ -77,6 +91,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Function to show eyeball messages
+    function showEyeballMessages(data) {
+        clearEyeballMessages();
+        
+        if (data.issues && data.issues.length > 0) {
+            eyeballWarnings.textContent = 'Issues:\n' + data.issues.join('\n');
+            eyeballWarnings.style.display = 'block';
+        }
+        
+        if (data.notes) {
+            eyeballNotes.textContent = 'Notes:\n' + data.notes;
+            eyeballNotes.style.display = 'block';
+        }
+    }
+
     // Function to show error messages
     function showError(message) {
         errorDiv.textContent = 'Error: ' + message;
@@ -95,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
         warningsDiv.style.display = 'block';
     }
 
-    // Handle form submission
+    // Handle compile form submission
     if (form) {
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -155,6 +184,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (error) {
                 showError('Failed to compile: ' + error.message);
+            }
+        });
+    }
+
+    // Handle eyeball form submission
+    if (eyeballForm) {
+        eyeballForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            clearEyeballMessages();
+            
+            const formData = new FormData(eyeballForm);
+            const dslName = window.location.pathname.split('/').pop(); // Get DSL name from URL
+            
+            try {
+                eyeballOutput.textContent = 'Validating code...';
+                
+                const response = await fetch(`/eyeball/${dslName}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        target: formData.get('target'),
+                        code: formData.get('code')
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Display the result
+                eyeballOutput.textContent = JSON.stringify(data, null, 2);
+                
+                // Show any messages
+                showEyeballMessages(data);
+                
+            } catch (error) {
+                eyeballOutput.textContent = 'Error: ' + error.message;
             }
         });
     }

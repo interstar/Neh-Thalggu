@@ -20,20 +20,20 @@ echo -e "\n"
 # Test speak DSL endpoints
 echo -e "${GREEN}3. Testing Speak DSL Endpoints${NC}"
 
-echo -e "${BLUE}Testing Header Endpoint (/header-speak-haxe)${NC}"
-curl -s http://localhost:3000/header-speak-haxe | python3 -m json.tool
+echo -e "${BLUE}Testing Header Endpoint (/header-speak-java)${NC}"
+curl -s http://localhost:3000/header-speak-java | python3 -m json.tool
 echo -e "\n"
 
-echo -e "${BLUE}Testing Compile Endpoint (/compile-speak-haxe)${NC}"
-curl -s -X POST http://localhost:3000/compile-speak-haxe \
+echo -e "${BLUE}Testing Compile Endpoint (/compile-speak-java)${NC}"
+curl -s -X POST http://localhost:3000/compile-speak-java \
      -H "Content-Type: application/json" \
      -d '{"dsl": "EnglishSpeaker says Hello, world!"}' | python3 -m json.tool
 echo -e "\n"
 
-echo -e "${BLUE}Testing Eyeball Endpoint (/eyeball-speak-haxe)${NC}"
-curl -s -X POST http://localhost:3000/eyeball-speak-haxe \
+echo -e "${BLUE}Testing Eyeball Endpoint (/eyeball-speak-java)${NC}"
+curl -s -X POST http://localhost:3000/eyeball-speak-java \
      -H "Content-Type: application/json" \
-     -d '{"code": "class EnglishSpeaker implements Speaker { public function speak():String { return \"Hello, world!\"; } }"}' | python3 -m json.tool
+     -d '{"code": "public class EnglishSpeaker implements ISpeaker { public EnglishSpeaker() {} public void speak() { System.out.println(\"Hello, world!\"); } }"}' | python3 -m json.tool
 echo -e "\n"
 
 # Test UI DSL endpoints
@@ -59,11 +59,11 @@ echo -e "\n"
 echo -e "${GREEN}5. Testing Prompt Endpoints${NC}"
 
 echo -e "${BLUE}Testing speak DSL compile prompt${NC}"
-curl -s http://localhost:3000/prompts/compile-speak-haxe | python3 -m json.tool
+curl -s http://localhost:3000/prompts/compile-speak-java | python3 -m json.tool
 echo -e "\n"
 
 echo -e "${BLUE}Testing speak DSL header prompt${NC}"
-curl -s http://localhost:3000/prompts/header-speak-haxe | python3 -m json.tool
+curl -s http://localhost:3000/prompts/header-speak-java | python3 -m json.tool
 echo -e "\n"
 
 echo -e "${BLUE}Testing UI DSL compile prompt${NC}"

@@ -21,19 +21,19 @@
 
 (deftest compile-result-schema-test
   (testing "Compile function returns valid schema"
-    (let [compile-fn (get-in test-registry [:dsls "speak" :targets "haxe" :compile-fn])
+    (let [compile-fn (get-in test-registry [:dsls "speak" :targets "java" :compile-fn])
           result (compile-fn "test input")]
       (is (m/validate schema/compile-result-schema result)))))
 
 (deftest header-result-schema-test
   (testing "Header function returns valid schema"
-    (let [header-fn (get-in test-registry [:dsls "speak" :targets "haxe" :header-fn])
+    (let [header-fn (get-in test-registry [:dsls "speak" :targets "java" :header-fn])
           result (header-fn)]
       (is (m/validate schema/header-result-schema result)))))
 
 (deftest eyeball-result-schema-test
   (testing "Eyeball function returns valid schema"
-    (let [eyeball-fn (get-in test-registry [:dsls "speak" :targets "haxe" :eyeball-fn])
+    (let [eyeball-fn (get-in test-registry [:dsls "speak" :targets "java" :eyeball-fn])
           result (eyeball-fn "test code")]
       (is (m/validate schema/eyeball-result-schema result)))))
 
@@ -45,8 +45,8 @@
       (is (contains? descriptions :resources))
       (let [tools (:tools descriptions)]
         (is (sequential? tools))
-        (is (some #(= (:name %) "compile-speak-haxe") tools))
-        (is (some #(= (:name %) "header-speak-haxe") tools))))))
+        (is (some #(= (:name %) "compile-speak-java") tools))
+        (is (some #(= (:name %) "header-speak-java") tools))))))
 
 (deftest list-prompts-test
   (testing "Listing prompts like the handler"
@@ -61,7 +61,7 @@
 
 (deftest get-prompt-test
   (testing "Getting existing prompt"
-    (is (string? (registry/get-prompt test-registry "compile-speak-haxe"))))
+    (is (string? (registry/get-prompt test-registry "compile-speak-java"))))
   (testing "Getting non-existent prompt"
     (is (nil? (registry/get-prompt test-registry "non-existent-prompt")))))
 

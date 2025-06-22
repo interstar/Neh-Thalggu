@@ -31,9 +31,9 @@
 (deftest plugin-function-results-test
   (testing "Plugin functions return correct schema"
     (let [plugin (loader/load-plugin test-plugin-dir "speak")
-          compile-fn (get-in plugin [:targets "haxe" :compile-fn])
-          header-fn (get-in plugin [:targets "haxe" :header-fn])
-          eyeball-fn (get-in plugin [:targets "haxe" :eyeball-fn])]
+          compile-fn (get-in plugin [:targets "java" :compile-fn])
+          header-fn (get-in plugin [:targets "java" :header-fn])
+          eyeball-fn (get-in plugin [:targets "java" :eyeball-fn])]
       (is (m/validate schema/compile-result-schema (compile-fn "test input")))
       (is (m/validate schema/header-result-schema (header-fn)))
       (is (m/validate schema/eyeball-result-schema (eyeball-fn "test code"))))))
