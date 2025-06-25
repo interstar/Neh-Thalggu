@@ -10,9 +10,6 @@
 (def plugin-dir "plugins")
 (def ui-dsl (loader/load-plugin plugin-dir "ui"))
 
-(println "Testing UI DSL")
-(println (m/validate schema/plugin-schema ui-dsl))
-
 (def compile-fn (-> ui-dsl :targets (get "jinja2") :compile-fn))
 (def haxe-compile-fn (-> ui-dsl :targets (get "haxe") :compile-fn))
 
@@ -81,22 +78,19 @@
       (let [dsl "<play-area/screen 
 [chromatic major minor diminished pentatonic1 debussy]>"
             result (compile-fn dsl)]
-        (println "Play area parse result:" result)
         (is (not (insta/failure? result)) "Parser should accept type hint on play-area")))
     
     (testing "Grid with type hints"
       (let [dsl "[# red-speed/horizontal-slider red-instrument red-volume/horizontal-slider | green-speed/horizontal-slider green-instrument green-volume/horizontal-slider | blue-speed/horizontal-slider blue-instrument blue-volume/horizontal-slider(min=0,max=127)]"
             result (compile-fn dsl)]
-        (println "Grid parse result:" result)
         (is (not (insta/failure? result)) "Parser should accept grid with type hints")))
     
     (testing "Full nested layout"
       (let [dsl "[<play-area [chromatic major minor diminished pentatonic1 debussy]> [# red-speed/horizontal-slider red-instrument red-volume/horizontal-slider | green-speed/horizontal-slider green-instrument green-volume/horizontal-slider | blue-speed/horizontal-slider blue-instrument blue-volume/horizontal-slider(min=0,max=127)]]"
             result (compile-fn dsl)]
-        (println "Full layout parse result:" result)
         (is (not (insta/failure? result)) "Parser should accept full nested layout")
         (when (insta/failure? result)
-          (println "Parse failure:" (insta/get-failure result))))))
+          (is false "Should not have parse failure")))))
 
 (deftest compilation-tests
   (testing "Basic compilation"

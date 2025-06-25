@@ -9,9 +9,6 @@
 (def plugin-dir "plugins")
 (def speak-dsl (loader/load-plugin plugin-dir "speak"))
 
-(println "Testing Speak")
-(println "Valid plugin? " (m/validate schema/plugin-schema speak-dsl ))
-
 (defn compile-success? [compile-result] (:success compile-result))
 (defn compile-failure? [compile-result] (not (:success compile-result)))
 

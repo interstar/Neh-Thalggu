@@ -45,8 +45,6 @@
                            (str/trim)  ; Remove leading/trailing whitespace
                            (str/replace #"\n\s*\n$" "\n")  ; Remove trailing empty lines
                            (str/replace #"\n$" ""))  ; Remove trailing newline
-          _ (println "Original input:" (pr-str input))
-          _ (println "Cleaned input:" (pr-str cleaned-input))
           parse-result (parser cleaned-input)]
       (if (insta/failure? parse-result)
         (let [failure (insta/get-failure parse-result)]
@@ -97,20 +95,15 @@
                                                    pattern-str (first simple-children)
                                                    type-node (first (filter #(= :Type (first %)) simple-children))
                                                    density-node (first (filter #(= :Density (first %)) simple-children))]
-                                               (println "Simple pattern debug: pattern-str=" pattern-str " type=" (second type-node) " density=" (second density-node))
                                                (str pattern-str " " (second type-node) " " (second density-node)))
                                      :Euclidean (let [euclidean-children (rest pattern-node)
                                                       pattern-str (first euclidean-children)
                                                       type-node (first (filter #(= :Type (first %)) euclidean-children))
                                                       density-node (first (filter #(= :Density (first %)) euclidean-children))]
-                                                  (println "Euclidean pattern debug: pattern-str=" pattern-str " type=" (second type-node) " density=" (second density-node))
                                                   (str pattern-str " " (second type-node) " " (second density-node)))
                                      :Explicit (let [explicit-children (rest pattern-node)
                                                      pattern-str (first explicit-children)
                                                      density-node (first (filter #(= :Density (first %)) explicit-children))]
-                                                 (println "Explicit pattern debug: pattern-str=" pattern-str " density=" (second density-node))
-                                                 ;; For Explicit patterns, the pattern-str contains the entire pattern
-                                                 ;; We just need to append the density
                                                  (str pattern-str " " (second density-node))))]
                        {:channel (Integer/parseInt chan)
                         :velocity (Integer/parseInt velocity)
@@ -121,7 +114,6 @@
 (defn compile-to-summary [input tag-path-fn load-java-class]
   (try
     (let [parse-result (parse-goldenpond-input input tag-path-fn)]
-      (println "Parse result:" parse-result)
       (if (not (:success parse-result))
         {:success false
          :code [""]
@@ -129,13 +121,9 @@
          :warning "See :error"
          :error (:error parse-result)}
         (let [parsed (:parsed parse-result)
-              _ (println "Parsed:" parsed)
               global (extract-global-settings parsed tag-path-fn)
-              _ (println "Global:" global)
               chord-sequence (extract-chord-sequence parsed tag-path-fn)
-              _ (println "Chord sequence:" chord-sequence)
               lines (extract-lines parsed tag-path-fn)
-              _ (println "Lines:" lines)
               
               ;; Load the Java GoldenData class
               GoldenData (load-java-class "haxe.root.GoldenData")
@@ -182,7 +170,6 @@
 (defn compile-to-json [input tag-path-fn load-java-class]
   (try
     (let [parse-result (parse-goldenpond-input input tag-path-fn)]
-      (println "Parse result:" parse-result)
       (if (not (:success parse-result))
         {:success false
          :code [""]
@@ -190,13 +177,9 @@
          :warning "See :error"
          :error (:error parse-result)}
         (let [parsed (:parsed parse-result)
-              _ (println "Parsed:" parsed)
               global (extract-global-settings parsed tag-path-fn)
-              _ (println "Global:" global)
               chord-sequence (extract-chord-sequence parsed tag-path-fn)
-              _ (println "Chord sequence:" chord-sequence)
               lines (extract-lines parsed tag-path-fn)
-              _ (println "Lines:" lines)
               
               ;; Load the Java classes
               GoldenData (load-java-class "haxe.root.GoldenData")

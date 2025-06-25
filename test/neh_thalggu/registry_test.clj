@@ -12,10 +12,6 @@
 (def test-plugin-dir "plugins")
 (def test-registry (loader/load-plugins test-plugin-dir))
 
-(println "test-registry keys:" (keys test-registry))
-(clojure.pprint/pprint test-registry)
-
-
 (deftest registry-schema-test
   (testing "Test registry matches schema"
     (is (m/validate schema/registry-schema test-registry))))
