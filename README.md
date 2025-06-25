@@ -1,4 +1,4 @@
-# MCP DSL Server Overview
+# Neh-Thalggu - An MCP DSL Server
 
 ## Project Overview
 
@@ -8,13 +8,47 @@ The project implements this vision through a Model-Context Protocol (MCP) server
 
 Typical examples of DSLs might be languages to define data-schemas. Or UI layouts. Or state-machines. Or grammars. Etc.
 
-### Example workflow.
+In a sense, the idea here is "Language Oriented Programming", which has long been an ideal in the Lisp through to Racket communities. The purpose of Neh-Thalggu is to bring this idea to the era of "vibe coding" and the modern tool stack of chat, coding assistents and MCP servers.
+
+### Quick Start
+
+The code is written in Clojure and managed with Leiningen
+
+```
+./go.sh
+```
+
+This will launch the Neh-Thalggu server with an MCP listener (for access by coding agents) on port 3000, and human readable web interface on port 3001
+
+Point your browser at http://localhost:3001 to see what languages are currently available.
+
+DSLs are provided in the "plugins" directory, and are dynamically loaded into the server when it starts. You can create your own DSL plugins by adding new files to the plugins directory 
+
+```
+myplugin/
+  - dsl.clj
+  - test/test_myplugin.clj
+  - README.md 
+```
+
+The existing makedsl plugin helps make new DSL templates.
+
+Clojure is a good language for writing small DSL compilers. We use Instaparse as our parser library. 
+
+The currently installed DSLs are :
+
+* speak : a "Hello World" type application that interprets language statements of the form `Name says greeting` and creates either Java or Python classes which say the greeting.
+* ui : a simple UI DSL for expressing nested frames or boxes which can be layed out horizontally or vertically. This language currently targets Jinja2 templates and a self-written Haxe framework  (not included here and not yet released)
+* makedsl : helps us bootstrap new languages. Given a name, description and Instaparse grammar, the makedsl DSL outputs the various boilerplate templates for a new DSL based on the grammar. You just need to write the generator function and adjust documentation and prompts
+* goldenpond : an example of a DSL made by wrapping an existing little-language provided in a Java JAR file. In this case it's "[Goldenpond](https://github.com/interstar/golden-pond)" a music composition library. Goldenpond is included here simply as an example of using a DSL from a Java library.
+
+### Typical Workflow.
 
 1) the user asks the AI to help write an application and presents a specification of the data-schema for the application in the form of a snippet of DSL and indicates the target language.
 
 2) the AI recognises that it should use the compiler available as an MCP tool, rather than trying to interpret the snippet itself.
 
-3) so the AI makes an MCP call to the appropriate "compile" tool (according to which DSL and which target language), passing the snippet. It receives back a larger chunk of code in the target language (say Java) which contains multiple class definitions.
+3) so the AI makes an MCP call to the appropriate "compile" tool for the DSL, passing the snippet and desired target language.. It receives back a larger chunk of code in the target language (say Java) which contains multiple class definitions.
 
 4) the AI ALSO calls the MCP server asking for the "header" for this DSL and target language. The header contains information which is needed by the generated code. For example the compiler might return four new class definitions from the snippet of DSL. The header will contain information such as dependencies, and example "include statements" for the appropriate dependencies. Were the target to be Python, the header might include example requirements from PyPI.
 
@@ -24,7 +58,7 @@ Typical examples of DSLs might be languages to define data-schemas. Or UI layout
 
 ### On the server
 
-Therefore, for each DSL and target on the server, we provide 3 MCP tools :
+For each DSL and target on the server, we provide 3 MCP tools :
 
 - **Compile**: Transforms DSL input into target language code.
   - Returns JSON corresponding to this EDN schema
@@ -109,9 +143,10 @@ When using this MCP server, language models should:
 
 3. **Code Generation Workflow**
    - Get header code first
-   - Generate individual class/component code
+   - Generate code from the DSL snippet using the compile tool
    - Combine header and generated code appropriately
    - Add any necessary "glue" code (like the main class in our example)
+   - pass the final file back to the "eyeball" tool of MCP server for extra linting and diagnostics
 
 4. **Error Handling**
    - Check `success` field in responses
@@ -123,8 +158,10 @@ When using this MCP server, language models should:
 
 1. Start the server:
    ```bash
-   lein run
+   lein run -p plugins/ -m 3000 -w 3001
    ```
+
+   (plugins/ is the plugins directory, 3000 is the port of the MCP server, 3001 is the port of the web server)
 
 2. Test the server:
    ```bash
@@ -145,7 +182,12 @@ The MCP server uses a plugin-based architecture to support multiple DSLs. This a
 
 ### Plugin Structure
 Each plugin is a directory containing:
-- `dsl.clj`: The implementation file
+```
+myplugin/
+  - dsl.clj
+  - test/test_myplugin.clj
+  - README.md 
+``` 
 
 ### Benefits
 - Runtime extensibility
