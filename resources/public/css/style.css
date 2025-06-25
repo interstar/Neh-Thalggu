@@ -266,6 +266,7 @@ button:hover {
 
 .output-group {
     margin-bottom: 20px;
+    position: relative;
 }
 
 .output-group label {
@@ -309,4 +310,35 @@ button:hover {
 .output-area .string { color: #032f62; }
 .output-area .comment { color: #6a737d; }
 .output-area .function { color: #6f42c1; }
-.output-area .number { color: #005cc5; } 
+.output-area .number { color: #005cc5; }
+
+/* Copy button styles */
+.copy-button {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    z-index: 10;
+}
+
+.copy-button:hover {
+    opacity: 1;
+    background-color: #5a6268;
+}
+
+.copy-button:active {
+    background-color: #545b62;
+}
+
+.copy-button.copied {
+    background-color: #28a745;
+    opacity: 1;
+} 

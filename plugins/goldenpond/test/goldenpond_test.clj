@@ -3,7 +3,8 @@
             [goldenpond.dsl :refer [get-plugin]]
             [instaparse.core :as insta]
             [instaparse.failure :as instafail]
-            [dsl-mcp-server.plugin-loader :as loader]))
+            [dsl-mcp-server.plugin-loader :as loader]
+            [clojure.data.json :as json]))
 
 (deftest test-goldenpond-plugin
   (testing "Plugin structure"
@@ -51,37 +52,6 @@
           (when (:warning result)
             (println "Warning:" (:warning result))))))))
 
-(deftest test-goldenpond-parse-debug
-  (testing "Debug parsing step"
-    (let [plugin (loader/load-plugin "plugins" "goldenpond")
-          parser goldenpond.dsl/parser
-          failing-input "48 Major 120\n71,76,72,75,71,76,72,75i\n0 100 5/8 c 1\n1 100 1.>. 2\n2 100 4%8 1 4"
-          parse-result (insta/parse parser failing-input)]
-      (println "Parse result:" parse-result)
-      (println "Is failure?" (insta/failure? parse-result))
-      (when (insta/failure? parse-result)
-        (println "Failure details:" (insta/get-failure parse-result)))
-      (is true)))) ; Just for debugging, always pass
-
-(deftest test-goldenpond-pattern-extraction-debug
-  (testing "Debug pattern extraction specifically"
-    (let [parser goldenpond.dsl/parser
-          input "48 Minor 120\n71,76,72,75,71,76,72,75i\n0 100 5/8 c 1\n1 100 1.>. 2\n2 100 4%8 1 4"
-          parse-result (insta/parse parser input)]
-      (println "=== FULL PARSE RESULT ===")
-      (println parse-result)
-      (println "\n=== LINE NODES ===")
-      (let [music-children (rest parse-result)
-            line-nodes (filter #(= :Line (first %)) music-children)]
-        (doseq [[i line-node] (map-indexed vector line-nodes)]
-          (println (str "Line " i ":"))
-          (println line-node)
-          (let [line-children (rest line-node)
-                pattern-node (first (filter #(contains? #{:Simple :Euclidean :Explicit} (first %)) line-children))]
-            (println (str "Pattern type: " (first pattern-node)))
-            (println (str "Pattern children: " (rest pattern-node)))
-            (println "---"))))
-      (is true)))) ; Just for debugging, always pass
 
 (deftest test-goldenpond-header
   (testing "Header generation"
@@ -137,4 +107,63 @@
           (println parse-result)
           (is true "Parsing succeeded as expected"))))))
 
-(run-tests) 
+(deftest test-goldenpond-json-target
+  (testing "JSON target compilation"
+    (let [plugin (loader/load-plugin "plugins" "goldenpond")
+          compile-fn (get-in plugin [:targets "json" :compile-fn])
+          result (compile-fn "48 Minor 120\n71,76,72,75,71,76,72,75i\n0 100 5/8 c 1\n1 100 1.>. 2\n2 100 4%8 1 4")]
+      (println "JSON target result:" result)
+      (is (map? result))
+      (is (contains? result :success))
+      (if (not (:success result))
+        (do
+          (is (contains? result :error))
+          (println "Error occurred:" (:error result)))
+        (do
+          (is (contains? result :code))
+          (let [json-string (first (:code result))]
+            (println "Generated JSON:" json-string)
+            ;; Parse the JSON to verify structure
+            (try
+              (let [json-data (json/read-str json-string)]
+                (is (contains? json-data "meta"))
+                (is (contains? json-data "lines"))
+                (is (contains? (get json-data "lines") "0"))
+                (is (contains? (get json-data "lines") "1"))
+                (is (contains? (get json-data "lines") "2"))
+                ;; Check that notes have required fields
+                (let [notes-0 (get-in json-data ["lines" "0"])]
+                  (when (seq notes-0)
+                    (let [first-note (first notes-0)]
+                      (is (contains? first-note "midinote"))
+                      (is (contains? first-note "start"))
+                      (is (contains? first-note "duration"))
+                      (is (contains? first-note "velocity")))))
+                (println "JSON structure validation passed"))
+              (catch Exception e
+                (println "JSON parsing failed:" (.getMessage e))
+                (is false "JSON should be valid")))))))))
+
+(deftest test-goldenpond-json-header
+  (testing "JSON target header generation"
+    (let [plugin (loader/load-plugin "plugins" "goldenpond")
+          header-fn (get-in plugin [:targets "json" :header-fn])
+          result (header-fn)]
+      (is (map? result))
+      (is (contains? result :success))
+      (is (contains? result :code))
+      (is (string? (:code result)))
+      (is (re-find #"JSON" (:code result))))))
+
+(deftest test-goldenpond-json-eyeball
+  (testing "JSON target eyeball function"
+    (let [plugin (loader/load-plugin "plugins" "goldenpond")
+          eyeball-fn (get-in plugin [:targets "json" :eyeball-fn])
+          valid-json "{\"meta\":{\"bpm\":120},\"lines\":{\"0\":[{\"midinote\":60,\"start\":0.0,\"duration\":0.5,\"velocity\":100}]}}"
+          result (eyeball-fn valid-json)]
+      (is (map? result))
+      (is (contains? result :status))
+      (is (contains? result :issues))
+      (is (= "seems ok" (:status result))))))
+
+(run-tests)

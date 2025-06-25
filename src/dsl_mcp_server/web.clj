@@ -20,55 +20,76 @@
     (include-css "/css/style.css")
     [:script {:src "/js/compile.js"}]])
 
+(defn render-input-section [dsl-name targets]
+  [:div.input-group
+    [:label {:for "dsl-input"} "DSL Input:"]
+    [:textarea#dsl-input {:name "dsl" :rows "10" :cols "50" :placeholder "Enter your DSL code here..."}]
+    [:div.compile-controls
+      [:select#target {:name "target"}
+        (for [target targets]
+          [:option {:value target} target])]
+      [:button {:type "submit"} "Compile"]]])
+
+(defn render-output-section []
+  [:div#output-container.output-container
+    [:div.output-group
+      [:label {:for "output-0"} "Compiled Output:"]
+      [:pre.output-area
+        [:code#output-0 {:class "language-clojure"} "Compiled output will appear here..."]
+        [:button.copy-button {:type "button" :title "Copy to clipboard"} "Copy"]]]
+    [:div#additional-outputs]])
+
+(defn render-notes-section []
+  [:div#notes-section.notes-section
+    [:div#warnings.warnings {:style "display: none"}]
+    [:div#notes.notes {:style "display: none"}]
+    [:div#error.error {:style "display: none"}]])
+
+(defn render-header-section []
+  [:div.header-section
+    [:h3 "Required Header"]
+    [:button#get-header {:type "button"} "Get Header"]
+    [:div.output-group
+      [:pre.output-area
+        [:code#header-output {:class "language-clojure"} "Header code will appear here..."]
+        [:button.copy-button {:type "button" :title "Copy to clipboard"} "Copy"]]]])
+
 (defn render-compile-form [dsl-name targets]
   [:div.compile-section
     [:h2 "Try It Out"]
     [:form#compile-form {:action (str "/compile/" dsl-name)}
-      [:div.input-group
-        [:label {:for "dsl-input"} "DSL Input:"]
-        [:textarea#dsl-input {:name "dsl" :rows "10" :cols "50" :placeholder "Enter your DSL code here..."}]]
-      [:div.compile-controls
-        [:select#target {:name "target"}
-          (for [target targets]
-            [:option {:value target} target])]
-        [:button {:type "submit"} "Compile"]]
-      [:div#output-container.output-container
-        [:div.output-group
-          [:label {:for "output-0"} "Compiled Output:"]
-          [:pre.output-area
-            [:code#output-0 {:class "language-clojure"} "Compiled output will appear here..."]]]
-        [:div#additional-outputs]]
-      [:div#notes-section.notes-section
-        [:div#warnings.warnings {:style "display: none"}]
-        [:div#notes.notes {:style "display: none"}]
-        [:div#error.error {:style "display: none"}]]
-      [:div.header-section
-        [:h3 "Required Header"]
-        [:button#get-header {:type "button"} "Get Header"]
-        [:div.output-group
-          [:pre.output-area
-            [:code#header-output {:class "language-clojure"} "Header code will appear here..."]]]]]])
+      (render-input-section dsl-name targets)
+      (render-output-section)
+      (render-notes-section)
+      (render-header-section)]])
+
+(defn render-eyeball-input-section [dsl-name targets]
+  [:div.input-group
+    [:label {:for "eyeball-input"} "Generated Code to Validate:"]
+    [:textarea#eyeball-input {:name "code" :rows "10" :cols "50" :placeholder "Paste the generated code here to validate it..."}]
+    [:div.eyeball-controls
+      [:select#eyeball-target {:name "target"}
+        (for [target targets]
+          [:option {:value target} target])]
+      [:button {:type "submit"} "Validate"]]])
+
+(defn render-eyeball-output-section []
+  [:div#eyeball-output-container.output-container
+    [:div.output-group
+      [:label {:for "eyeball-output"} "Validation Result:"]
+      [:pre.output-area
+        [:code#eyeball-output {:class "language-clojure"} "Validation result will appear here..."]
+        [:button.copy-button {:type "button" :title "Copy to clipboard"} "Copy"]]]
+    [:div#eyeball-notes.notes-section
+      [:div#eyeball-warnings.warnings {:style "display: none"}]
+      [:div#eyeball-notes-text.notes {:style "display: none"}]]])
 
 (defn render-eyeball-form [dsl-name targets]
   [:div.eyeball-section
     [:h2 "Test Eyeball Function"]
     [:form#eyeball-form {:action (str "/eyeball/" dsl-name)}
-      [:div.input-group
-        [:label {:for "eyeball-input"} "Generated Code to Validate:"]
-        [:textarea#eyeball-input {:name "code" :rows "10" :cols "50" :placeholder "Paste the generated code here to validate it..."}]]
-      [:div.eyeball-controls
-        [:select#eyeball-target {:name "target"}
-          (for [target targets]
-            [:option {:value target} target])]
-        [:button {:type "submit"} "Validate"]]
-      [:div#eyeball-output-container.output-container
-        [:div.output-group
-          [:label {:for "eyeball-output"} "Validation Result:"]
-          [:pre.output-area
-            [:code#eyeball-output {:class "language-clojure"} "Validation result will appear here..."]]]
-        [:div#eyeball-notes.notes-section
-          [:div#eyeball-warnings.warnings {:style "display: none"}]
-          [:div#eyeball-notes-text.notes {:style "display: none"}]]]]])
+      (render-eyeball-input-section dsl-name targets)
+      (render-eyeball-output-section)]])
 
 (defn render-mcp-endpoints [dsl-name targets]
   [:div.mcp-endpoints

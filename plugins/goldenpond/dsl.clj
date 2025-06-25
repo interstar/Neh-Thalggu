@@ -1,7 +1,8 @@
 (ns goldenpond.dsl
   (:require [instaparse.core :as insta]
             [clostache.parser :refer [render]]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [clojure.data.json :as json]))
 
 (def grammar
   "Music = Global <NL> Chords <NL> Line (<NL> Line)*
@@ -178,6 +179,100 @@
        :warning "See :error"
        :error (.getMessage e)})))
 
+(defn compile-to-json [input tag-path-fn load-java-class]
+  (try
+    (let [parse-result (parse-goldenpond-input input tag-path-fn)]
+      (println "Parse result:" parse-result)
+      (if (not (:success parse-result))
+        {:success false
+         :code [""]
+         :notes (str input " is not a valid goldenpond composition")
+         :warning "See :error"
+         :error (:error parse-result)}
+        (let [parsed (:parsed parse-result)
+              _ (println "Parsed:" parsed)
+              global (extract-global-settings parsed tag-path-fn)
+              _ (println "Global:" global)
+              chord-sequence (extract-chord-sequence parsed tag-path-fn)
+              _ (println "Chord sequence:" chord-sequence)
+              lines (extract-lines parsed tag-path-fn)
+              _ (println "Lines:" lines)
+              
+              ;; Load the Java classes
+              GoldenData (load-java-class "haxe.root.GoldenData")
+              ILineGenerator (load-java-class "haxe.root.ILineGenerator")
+              INote (load-java-class "haxe.root.INote")
+              Array (load-java-class "haxe.root.Array")
+              
+              ;; Create and configure GoldenData
+              golden-data (.newInstance GoldenData)
+              _ (set! (.root golden-data) (:root global))
+              _ (set! (.mode golden-data) (:scale global))
+              _ (set! (.chordSequence golden-data) chord-sequence)
+              _ (set! (.stutter golden-data) 0)
+              _ (set! (.bpm golden-data) (:bpm global))
+              _ (set! (.chordDuration golden-data) 4)
+              
+              ;; Add lines
+              _ (doseq [line lines]
+                  (let [MidiInstrumentContext (load-java-class "haxe.root.MidiInstrumentContext")
+                        constructor (.getConstructor MidiInstrumentContext 
+                                                    (into-array Class [Integer/TYPE Integer/TYPE Double/TYPE Integer/TYPE]))
+                        channel-val (int (:channel line))
+                        velocity-val (int (:velocity line))
+                        args (make-array Object 4)]
+                    (aset args 0 (Integer/valueOf channel-val))
+                    (aset args 1 (Integer/valueOf velocity-val))
+                    (aset args 2 (Double/valueOf 0.8))
+                    (aset args 3 (Integer/valueOf 0))
+                    (let [midi-context (.newInstance constructor args)]
+                      (.addLine golden-data (:pattern line) midi-context))))
+              
+              ;; Create line generators and generate notes
+              line-count (.length (.lines golden-data))
+              generators (make-array ILineGenerator line-count)
+              _ (dotimes [i line-count]
+                  (aset generators i (.makeLineGenerator golden-data i)))
+              
+              ;; Generate notes for each line
+              line-notes (into {}
+                              (for [[i line] (map-indexed vector lines)]
+                                (let [generator (aget generators i)
+                                      notes-array (.generateNotes generator 0)
+                                      notes-list (for [j (range (.length notes-array))]
+                                                   (let [note (clojure.lang.Reflector/invokeInstanceMethod notes-array "__get" (object-array [j]))]
+                                                     {:midinote (.getMidiNoteValue note)
+                                                      :start (.getStartTime note)
+                                                      :duration (.getLength note)
+                                                      :velocity (:velocity line)}))]
+                                  [(str (:channel line)) notes-list])))
+              
+              ;; Create the JSON structure
+              json-data {:meta {:bpm (:bpm global)
+                               :root (:root global)
+                               :mode (case (:scale global)
+                                       0 "major"
+                                       1 "minor"
+                                       2 "harmonicMinor"
+                                       3 "melodicMinor")
+                               :chordSequence chord-sequence}
+                        :lines line-notes}
+              
+              ;; Convert to JSON string
+              json-string (json/write-str json-data {:pretty true})]
+          {:success true
+           :code [json-string]
+           :notes "Generated JSON note data using GoldenPond library"
+           :warning ""})))
+    (catch Exception e
+      (println "Exception in compile-to-json:" (.getMessage e))
+      (.printStackTrace e)
+      {:success false
+       :code [""]
+       :notes "Error during JSON compilation"
+       :warning "See :error"
+       :error (.getMessage e)})))
+
 (defn get-plugin [tag-path load-java-class]
   (let [dslname "goldenpond"
         grammar-rules (parse-grammar-rules grammar)]
@@ -278,6 +373,116 @@ Notes:
 - Ensures summary contains all required GoldenData information
 - Verifies the summary was properly generated
 - This is the summary target implementation of the GoldenPond DSL eyeball function"
+                 }
+       }
+      "json"
+      {:description "Generate JSON note data using GoldenPond library"
+       :compile-fn (fn [s] (compile-to-json s tag-path load-java-class))
+       :header-fn (fn []
+                    {:success true
+                     :code "GoldenPond JSON Note Data Format
+This header provides information about the JSON note data format.
+
+The JSON output includes:
+- Meta section with BPM, root note, mode, and chord sequence
+- Lines section with channel numbers as keys
+- Note arrays with midinote, start time, duration, and velocity
+
+Example format:
+{
+  \"meta\": {
+    \"bpm\": 120,
+    \"root\": 48,
+    \"mode\": \"minor\",
+    \"chordSequence\": \"71,76,72,75,71,76,72,75i\"
+  },
+  \"lines\": {
+    \"0\": [
+      {\"midinote\": 60, \"start\": 0.0, \"duration\": 0.5, \"velocity\": 100}
+    ]
+  }
+}
+
+The JSON is generated by creating a GoldenData object,
+configuring it with the DSL parameters, generating actual notes,
+and converting the note data to JSON format."
+                     :notes "Information about JSON note data format"
+                     :warning "The JSON contains actual generated note data from GoldenPond library"})
+       :eyeball-fn (fn [code]
+                     (let [issues (cond-> []
+                                    (not (re-find #"meta" code))
+                                    (conj "Missing meta section")
+                                    (not (re-find #"lines" code))
+                                    (conj "Missing lines section")
+                                    (not (re-find #"midinote" code))
+                                    (conj "Missing midinote field")
+                                    (not (re-find #"start" code))
+                                    (conj "Missing start time field")
+                                    (not (re-find #"duration" code))
+                                    (conj "Missing duration field")
+                                    (not (re-find #"velocity" code))
+                                    (conj "Missing velocity field")
+                                    )]
+                       {:status (if (empty? issues) "seems ok" "issues")
+                        :issues issues
+                        :notes "Checks for required JSON note data structure"}))
+       :prompts {
+                 :compile "Compiles GoldenPond DSL input into JSON note data.
+
+Arguments:
+- dsl: The DSL input in the format:
+  Root Scale BPM
+  ChordSequence
+  Channel Velocity Pattern
+  Channel Velocity Pattern
+  ...
+
+Example:
+Input: 
+48 Minor 120
+71,76,72,75,71,76,72,75i
+0 100 5/8 c 1
+1 100 1.>. 2
+2 100 4%8 1 4
+
+Output:
+JSON structure with:
+- Meta section: BPM, root note, mode, chord sequence
+- Lines section: Channel numbers as keys, arrays of notes
+- Note objects: midinote, start time, duration, velocity
+
+Notes:
+- The JSON is generated by creating a GoldenData object
+- The object is configured with the DSL parameters
+- Line generators create actual note data
+- Notes are converted to JSON format
+- This is the JSON target implementation of the GoldenPond DSL"
+                 :header "Gets information about the JSON note data format.
+
+Example Output:
+GoldenPond JSON Note Data Format
+This header provides information about the JSON note data format.
+
+Notes:
+- The JSON includes meta section with composition settings
+- Lines section contains channel numbers and note arrays
+- Each note has midinote, start time, duration, and velocity
+- This is the JSON target implementation of the GoldenPond DSL header"
+                 :eyeball "Performs sanity checks on generated JSON note data.
+
+Checks:
+- Meta section is present
+- Lines section is present
+- Required note fields (midinote, start, duration, velocity) are included
+
+Example:
+Input: Generated JSON note data
+Output: Status and any issues found
+
+Notes:
+- Ensures JSON contains all required sections and fields
+- Verifies the JSON was properly generated
+- This is the JSON target implementation of the GoldenPond DSL eyeball function"
                  }
        }
       }

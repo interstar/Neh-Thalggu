@@ -6,6 +6,7 @@
                  [ring/ring-jetty-adapter "1.11.0"]
                  [compojure "1.7.1"]
                  [cheshire "5.12.0"]
+                 [org.clojure/data.json "2.4.0"]
                  [hiccup "1.0.5"]
                  [de.ubercode.clostache/clostache "1.4.0"]
                  [org.clojure/tools.cli "1.1.230"]
