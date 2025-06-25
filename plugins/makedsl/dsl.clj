@@ -48,10 +48,17 @@
          :error "Grammar is required (provide grammar rules after the header)"}
         
         :else
+        ;; Instaparse grammar validation
+        (try
+          (require 'instaparse.core)
+          ((resolve 'instaparse.core/parser) grammar)
         {:success true
          :dsl-name dsl-name
          :description description
-         :grammar grammar}))
+           :grammar grammar}
+          (catch Exception e
+            {:success false
+             :error (str "Invalid Instaparse grammar: " (.getMessage e))}))))
     (catch Exception e
       {:success false
        :error (str "Failed to parse DSL definition: " (.getMessage e))})))
@@ -227,24 +234,73 @@ Notes:
   (str (generate-test-namespace dsl-name)
        (generate-test-functions dsl-name)))
 
+(defn generate-readme-md [dsl-name description]
+  (str "# " dsl-name " DSL
+
+The " dsl-name " DSL is a domain-specific language for " (clojure.string/lower-case description) ".
+
+## Syntax
+
+Describe the syntax of your DSL here.
+
+## Examples
+
+### Basic Usage
+
+```
+[Example DSL input here]
+```
+
+This generates:
+
+```
+[Generated output example here]
+```
+
+### More Examples
+
+```
+[Additional examples]
+```
+
+## Generated Code Structure
+
+Describe the structure of the generated code.
+
+## Usage
+
+Explain how to use the generated code.
+
+## Error Handling
+
+The DSL will return an error if:
+- [List error conditions]
+
+## Target Language
+
+Currently supports:
+- **TARGET_LANGUAGE**: [Description of target language support]
+"))
+
 (defn compile-makedsl [input tag-path-fn]
   (try
     (let [parsed (parse-dsl-definition input)]
       (if (:success parsed)
         (let [dsl-clj (generate-dsl-clj (:dsl-name parsed) (:description parsed) (:grammar parsed))
-              test-clj (generate-test-clj (:dsl-name parsed))]
+              test-clj (generate-test-clj (:dsl-name parsed))
+              readme-md (generate-readme-md (:dsl-name parsed) (:description parsed))]
           {:success true
-           :code [dsl-clj test-clj]
+           :code [dsl-clj test-clj readme-md]
            :notes (str "Generated DSL plugin for " (:dsl-name parsed))
            :warning "This is a template - you'll need to implement the actual compilation logic"})
         {:success false
-         :code ["" ""]
+         :code ["" "" ""]
          :notes "Failed to parse DSL definition"
          :warning "See :error"
          :error (:error parsed)}))
     (catch Exception e
       {:success false
-       :code ["" ""]
+       :code ["" "" ""]
        :notes "Error during DSL generation"
        :warning "See :error"
        :error (.getMessage e)})))

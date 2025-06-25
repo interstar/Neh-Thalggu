@@ -10,7 +10,7 @@ The MakeDSL uses a simple header-based format:
 Name: YourDSLName
 Description: A brief description of what your DSL does
 
-Grammar rules go here...
+Grammar rules, in Instaparse EDN format go here...
 ```
 
 ## Structure
@@ -67,6 +67,13 @@ The MakeDSL generates several files:
 - Plugin validation tests
 - Compilation tests
 - Header and eyeball function tests
+
+### 3. Documentation (`README.md`)
+- Basic DSL documentation template
+- Syntax description placeholder
+- Examples section
+- Usage instructions
+- Target language information
 
 ## Generated Code Structure
 

@@ -5,8 +5,8 @@
             [cheshire.core :as json]
             [dsl-mcp-server.schema :as schema]
             [dsl-mcp-server.registry :as registry]
-            [malli.core :as m]))
-
+            [malli.core :as m])
+  (:import (clojure.lang ArityException)))
 
 (defn tag-path
   "Traverses a Hiccup-like vector tree by matching tag keywords.
@@ -34,11 +34,42 @@
                         nil))))]
     (find-path hiccup path)))
 
+(defn create-jar-classloader [plugin-dir plugin-name]
+  "Creates a URLClassLoader for JAR files in the plugin directory."
+  (let [plugin-path (io/file plugin-dir plugin-name)
+        jar-files (->> (.listFiles plugin-path)
+                      (filter #(.isFile %))
+                      (filter #(.endsWith (.getName %) ".jar")))]
+    (if (seq jar-files)
+      (let [urls (map #(.toURL %) jar-files)]
+        (java.net.URLClassLoader. (into-array java.net.URL urls)))
+      nil)))
+
+(defn load-java-class [classloader class-name]
+  "Loads a Java class using the provided classloader."
+  (try
+    (if classloader
+      (.loadClass classloader class-name)
+      (Class/forName class-name))
+    (catch Exception e
+      (println "Failed to load Java class" class-name ":" (.getMessage e))
+      nil)))
+
 (defn load-plugin [plugin-dir plugin-name]
   (let [plugin-file (io/file plugin-dir plugin-name "dsl.clj")]
     (if (.exists plugin-file)
       (let [get-plugin-fn (load-file (.getPath plugin-file))
-            plugin (get-plugin-fn tag-path)]
+            ;; Create JAR classloader for this plugin
+            jar-classloader (create-jar-classloader plugin-dir plugin-name)
+            ;; Create load-java-class function for this plugin
+            load-java-class-fn (partial load-java-class jar-classloader)
+            ;; Call get-plugin with both functions, but handle backward compatibility
+            plugin (try
+                    ;; Try calling with both parameters (new plugins)
+                    (get-plugin-fn tag-path load-java-class-fn)
+                    (catch ArityException _
+                      ;; Fall back to single parameter (existing plugins)
+                      (get-plugin-fn tag-path)))]
         (if (m/validate schema/plugin-schema plugin)
           (-> plugin
               (assoc :name plugin-name)
@@ -51,8 +82,6 @@
       (do
         (println "Plugin file not found:" (.getAbsolutePath plugin-file))
         (System/exit 1)))))
-
-
 
 (defn load-plugins [plugin-dir]
   (let [dir (io/file plugin-dir)]
