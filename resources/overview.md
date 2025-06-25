@@ -1,4 +1,4 @@
-# MCP DSL Server Overview
+# Neh-Thalggu - An MCP DSL Server
 
 ## Project Overview
 
