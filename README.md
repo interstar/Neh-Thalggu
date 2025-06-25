@@ -10,6 +10,8 @@ Typical examples of DSLs might be languages to define data-schemas. Or UI layout
 
 In a sense, the idea here is "Language Oriented Programming", which has long been an ideal in the Lisp through to Racket communities. The purpose of Neh-Thalggu is to bring this idea to the era of "vibe coding" and the modern tool stack of chat, coding assistents and MCP servers.
 
+![](https://1d6chan.miraheze.org/wiki/Neh-thalggu#/media/File:Neh-thalggu_X2.jpg)
+
 ### Quick Start
 
 The code is written in Clojure and managed with Leiningen
