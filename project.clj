@@ -1,4 +1,4 @@
-(defproject dsl-mcp-server "0.1.0-SNAPSHOT"
+(defproject neh-thalggu "0.1.0-SNAPSHOT"
   :description "A simple MCP-compatible DSL compilation server"
   :dependencies [[org.clojure/clojure "1.11.3"]
                  [instaparse "1.4.12"]
@@ -16,7 +16,7 @@
                  [org.clojure/tools.namespace "1.4.4" :scope "test"]
                  [metosin/malli "0.14.0"]]
   :source-paths ["src/" "plugins/" "test/"]
-  :main dsl-mcp-server.core
+  :main neh-thalggu.core
   :profiles {:uberjar {:aot :all}
              :plugin-test {:test-paths ["plugins/speak/test" "plugins/ui/test" "plugins/makedsl/test" "plugins/goldenpond/test"]}}
   :test-paths ["test" "plugins/speak/test" "plugins/ui/test" "plugins/makedsl/test" "plugins/goldenpond/test"]) 

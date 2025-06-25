@@ -1,9 +1,10 @@
 (ns makedsl.test.makedsl-test
   (:require [clojure.test :refer :all]
-            [dsl-mcp-server.plugin-loader :as loader]
-            [malli.core :as m]
-            [dsl-mcp-server.schema :as schema]
-            [clojure.string :as string]))
+            [neh-thalggu.plugin-loader :as loader]
+           
+            [neh-thalggu.schema :as schema]
+            [clojure.string :as string]
+            [malli.core :as m]))
 
 (def plugin-dir "plugins")
 (def makedsl-dsl (loader/load-plugin plugin-dir "makedsl"))

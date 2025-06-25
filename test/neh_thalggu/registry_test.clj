@@ -1,12 +1,13 @@
-(ns dsl-mcp-server.registry-test
+(ns neh-thalggu.registry-test
   (:require [clojure.test :refer :all]
-            [dsl-mcp-server.registry :as registry]
-            [dsl-mcp-server.schema :as schema]
+            [neh-thalggu.registry :as registry]
+            [neh-thalggu.schema :as schema]
             [malli.core :as m]
             [cheshire.core :as json]
-            [dsl-mcp-server.plugin-loader :as loader]
+            [neh-thalggu.plugin-loader :as loader]
             [clojure.string :as str]
-            [clojure.pprint :as pprint]))
+            [clojure.pprint :as pprint]
+            [clojure.java.io :as io]))
 
 (def test-plugin-dir "plugins")
 (def test-registry (loader/load-plugins test-plugin-dir))

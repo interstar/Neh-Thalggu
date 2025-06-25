@@ -1,11 +1,11 @@
-(ns dsl-mcp-server.registry
+(ns neh-thalggu.registry
   (:require [cheshire.core :as json]
             [compojure.core :refer [GET POST routes]]
             [compojure.route :as route]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
-            [dsl-mcp-server.schema :as schema]))
+            [neh-thalggu.schema :as schema]))
 
 ;; Generic handlers for all DSLs
 (defn compile-dsl-handler [compile-fn req]

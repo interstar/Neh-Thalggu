@@ -1,4 +1,4 @@
-(ns dsl-mcp-server.web
+(ns neh-thalggu.web
   (:require [ring.adapter.jetty :as jetty]
             [compojure.core :refer [defroutes GET routes POST]]
             [compojure.route :as route]
@@ -7,7 +7,7 @@
             [hiccup.util :refer [escape-html]]
             [clojure.java.io :as io]
             [clojure.string :as string]
-            [dsl-mcp-server.registry :as registry]
+            [neh-thalggu.registry :as registry]
             [cheshire.core :as json]
             [clj-http.client :as clj-http]
             [markdown.core :as md]

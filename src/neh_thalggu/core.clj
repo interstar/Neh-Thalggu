@@ -1,16 +1,16 @@
-(ns dsl-mcp-server.core
+(ns neh-thalggu.core
   (:require [ring.adapter.jetty :as jetty]
             [compojure.core :refer [defroutes GET POST routes]]
             [compojure.route :as route]
             [cheshire.core :as json]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
-            [dsl-mcp-server.registry :as registry]
-            [dsl-mcp-server.plugin-loader :as plugin-loader]
+            [neh-thalggu.registry :as registry]
+            [neh-thalggu.plugin-loader :as plugin-loader]
             [clojure.string :as string]
-            [dsl-mcp-server.web :as web]
+            [neh-thalggu.web :as web]
             [clojure.tools.cli :refer [parse-opts]]
-            [dsl-mcp-server.schema :as schema]
+            [neh-thalggu.schema :as schema]
             ))
 
 
@@ -86,15 +86,15 @@
    ["-h" "--help"]])
 
 (defn usage [options-summary]
-  (->> ["DSL MCP Server"
+  (->> ["Neh Thalggu - DSL MCP Server"
         ""
-        "Usage: java -jar dsl-mcp-server.jar [options]"
+        "Usage: java -jar neh-thalggu.jar [options]"
         ""
         "Options:"
         options-summary
         ""
         "Example:"
-        "  java -jar dsl-mcp-server.jar -p /path/to/plugins -m 8080 -w 3000"]
+        "  java -jar neh-thalggu.jar -p /path/to/plugins -m 3000 -w 3001"]
        (clojure.string/join \newline)))
 
 (defn error-msg [errors]

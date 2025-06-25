@@ -1,9 +1,9 @@
 (ns goldenpond.test.goldenpond-test
   (:require [clojure.test :refer :all]
-            [goldenpond.dsl :refer [get-plugin]]
+            [goldenpond.dsl :as dsl]
+            [neh-thalggu.plugin-loader :as loader]
             [instaparse.core :as insta]
             [instaparse.failure :as instafail]
-            [dsl-mcp-server.plugin-loader :as loader]
             [clojure.data.json :as json]))
 
 (deftest test-goldenpond-plugin

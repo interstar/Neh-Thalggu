@@ -1,4 +1,4 @@
-(ns dsl-mcp-server.schema
+(ns neh-thalggu.schema
   (:require [malli.core :as m]
             [malli.error :as me]
             [malli.util :as mu]))

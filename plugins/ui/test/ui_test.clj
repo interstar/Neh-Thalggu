@@ -1,10 +1,11 @@
 (ns ui.test.ui-test
   (:require [clojure.test :refer :all]
-            [dsl-mcp-server.plugin-loader :as loader]
+            [neh-thalggu.plugin-loader :as loader]
             [malli.core :as m]
-            [dsl-mcp-server.schema :as schema]
+            [neh-thalggu.schema :as schema]
             [instaparse.core :as insta]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            ))
 
 (def plugin-dir "plugins")
 (def ui-dsl (loader/load-plugin plugin-dir "ui"))

@@ -1,7 +1,8 @@
-(ns dsl-mcp-server.plugin-loader-test
+(ns neh-thalggu.plugin-loader-test
   (:require [clojure.test :refer :all]
-            [dsl-mcp-server.plugin-loader :as loader :refer [tag-path]]
-            [dsl-mcp-server.schema :as schema]
+            [neh-thalggu.plugin-loader :as loader :refer [tag-path]]
+            [neh-thalggu.schema :as schema]
+            [clojure.java.io :as io]
             [malli.core :as m]))
 
 (def test-plugin-dir "plugins")

@@ -1,10 +1,10 @@
-(ns dsl-mcp-server.plugin-loader
+(ns neh-thalggu.plugin-loader
   (:require [clojure.java.io :as io]
             [clojure.edn :as edn]
             [clojure.string :as str]
             [cheshire.core :as json]
-            [dsl-mcp-server.schema :as schema]
-            [dsl-mcp-server.registry :as registry]
+            [neh-thalggu.schema :as schema]
+            [neh-thalggu.registry :as registry]
             [malli.core :as m])
   (:import (clojure.lang ArityException)))
 

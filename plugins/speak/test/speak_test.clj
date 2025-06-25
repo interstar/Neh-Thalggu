@@ -1,8 +1,8 @@
 (ns speak.test.speak-test
   (:require [clojure.test :refer :all]
-            [dsl-mcp-server.plugin-loader :as loader]
+            [neh-thalggu.plugin-loader :as loader]
             [malli.core :as m]
-            [dsl-mcp-server.schema :as schema]
+            [neh-thalggu.schema :as schema]
             
             [clojure.string :as string]))
 
