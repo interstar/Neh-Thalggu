@@ -1,0 +1,41 @@
+(ns {{dsl-name}}.test.{{dsl-name}}-test
+  (:require [clojure.test :refer :all]
+            [{{dsl-name}}.dsl :refer [get-plugin]]))
+
+(deftest test-{{dsl-name}}-plugin
+  (testing "Plugin structure"
+    (let [plugin (get-plugin (fn [& args] args))]
+      (is (= "{{dsl-name}}" (:name plugin)))
+      (is (contains? (:targets plugin) "TARGET_LANGUAGE"))
+      (is (fn? (get-in plugin [:targets "TARGET_LANGUAGE" :compile-fn])))
+      (is (fn? (get-in plugin [:targets "TARGET_LANGUAGE" :header-fn])))
+      (is (fn? (get-in plugin [:targets "TARGET_LANGUAGE" :eyeball-fn]))))))
+
+(deftest test-{{dsl-name}}-compilation
+  (testing "Basic compilation"
+    (let [plugin (get-plugin (fn [& args] args))
+          compile-fn (get-in plugin [:targets "TARGET_LANGUAGE" :compile-fn])
+          result (compile-fn "test input")]
+      (is (map? result))
+      (is (contains? result :success))
+      (is (contains? result :code)))))
+
+(deftest test-{{dsl-name}}-header
+  (testing "Header generation"
+    (let [plugin (get-plugin (fn [& args] args))
+          header-fn (get-in plugin [:targets "TARGET_LANGUAGE" :header-fn])
+          result (header-fn)]
+      (is (map? result))
+      (is (contains? result :success))
+      (is (contains? result :code)))))
+
+(deftest test-{{dsl-name}}-eyeball
+  (testing "Eyeball function"
+    (let [plugin (get-plugin (fn [& args] args))
+          eyeball-fn (get-in plugin [:targets "TARGET_LANGUAGE" :eyeball-fn])
+          result (eyeball-fn "test code")]
+      (is (map? result))
+      (is (contains? result :status))
+      (is (contains? result :issues)))))
+
+(run-tests) 

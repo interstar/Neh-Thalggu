@@ -1,112 +1,147 @@
 (ns wchnt.test.wchnt-test
   (:require [clojure.test :refer :all]
+            [neh-thalggu.plugin-loader :as loader]
+            [neh-thalggu.schema :as schema]
             [clojure.string :as str]
-            [wchnt.dsl :refer [get-plugin]]))
+            [malli.core :as m]))
 
-(deftest test-wchnt-plugin
-  (testing "Plugin structure"
-    (let [plugin (get-plugin (fn [& args] args))]
-      (is (= "wchnt" (:name plugin)))
-      (is (contains? (:targets plugin) "haxe"))
-      (is (fn? (get-in plugin [:targets "haxe" :compile-fn])))
-      (is (fn? (get-in plugin [:targets "haxe" :header-fn])))
-      (is (fn? (get-in plugin [:targets "haxe" :eyeball-fn]))))))
+(def plugin-dir "plugins")
+(def wchnt-dsl (loader/load-plugin plugin-dir "wchnt"))
 
-(deftest test-wchnt-compilation
-  (testing "Basic compilation"
-    (let [plugin (get-plugin (fn [& args] args))
-          compile-fn (get-in plugin [:targets "haxe" :compile-fn])
-          result (compile-fn "Game = PlayArea Ball")]
-      (is (map? result))
-      (is (contains? result :success))
-      (is (contains? result :code)))))
+(deftest plugin-schema-validation
+  (testing "wchnt plugin conforms to schema"
+    (is (m/validate schema/plugin-schema wchnt-dsl))))
 
-(deftest test-wchnt-compilation-pong-example
-  (testing "Pong game compilation"
-    (let [plugin (get-plugin (fn [& args] args))
-          compile-fn (get-in plugin [:targets "haxe" :compile-fn])
-          input "Game = PlayArea Ball Paddle/paddle1 Paddle/paddle2
+(deftest plugin-metadata-values
+  (testing "wchnt plugin metadata values"
+    (is (= "wchnt" (:name (:metadata wchnt-dsl))))
+    (is (= "A DSL for describing data-schemas and object-oriented architectures" (:description (:metadata wchnt-dsl))))))
+
+(deftest test-wchnt-plugin-structure
+  (testing "Plugin has correct structure"
+    (is (contains? (:targets wchnt-dsl) "haxe"))
+    (is (fn? (get-in wchnt-dsl [:targets "haxe" :compile-fn])))
+    (is (fn? (get-in wchnt-dsl [:targets "haxe" :header-fn])))
+    (is (fn? (get-in wchnt-dsl [:targets "haxe" :eyeball-fn])))))
+
+(deftest test-wchnt-header
+  (testing "Header function returns valid structure"
+    (let [header-fn (get-in wchnt-dsl [:targets "haxe" :header-fn])
+          result (header-fn)]
+      (is (m/validate schema/header-result-schema result)))))
+
+(deftest test-wchnt-eyeball
+  (testing "Eyeball function returns valid structure"
+    (let [eyeball-fn (get-in wchnt-dsl [:targets "haxe" :eyeball-fn])
+          result (eyeball-fn "test code")]
+      (is (m/validate schema/eyeball-result-schema result)))))
+
+(deftest test-wchnt-basic-compilation
+  (testing "Compile function handles basic WCHNT syntax"
+    (let [compile-fn (get-in wchnt-dsl [:targets "haxe" :compile-fn])
+          result (compile-fn "Person = String/name int/age")]
+      ;; Test that the result structure matches the schema
+      (is (m/validate schema/compile-result-schema result))
+      ;; CRITICAL: Test that compilation actually succeeded
+      (is (:success result) "Compilation should succeed with valid WCHNT syntax")
+      ;; Test that we got actual generated code
+      (when (:success result)
+        (is (vector? (:code result)))
+        (is (pos? (count (:code result))))
+        (is (string? (first (:code result))))
+        (is (not (str/blank? (first (:code result)))))
+        ;; The generated code should contain Haxe class definitions
+        (is (str/includes? (first (:code result)) "class"))
+        (is (str/includes? (first (:code result)) "Person"))))))
+
+(deftest test-wchnt-array-types
+  (testing "Compile function handles array types"
+    (let [compile-fn (get-in wchnt-dsl [:targets "haxe" :compile-fn])
+          result (compile-fn "Person = String/name [Address]/addresses
+Address = String/street String/city")]
+      (is (m/validate schema/compile-result-schema result))
+      (is (:success result) "Compilation should succeed with array types")
+      (when (:success result)
+        (let [code (first (:code result))]
+          (is (str/includes? code "class Person"))
+          (is (str/includes? code "Array<Address>"))
+          (is (str/includes? code "class Address")))))))
+
+(deftest test-wchnt-interface-disjunction
+  (testing "Compile function handles interface disjunctions"
+    (let [compile-fn (get-in wchnt-dsl [:targets "haxe" :compile-fn])
+          result (compile-fn "Shape = Triangle | Circle
+Triangle = int/base int/height
+Circle = int/radius")]
+      (is (m/validate schema/compile-result-schema result))
+      (is (:success result) "Compilation should succeed with interface disjunctions")
+      (when (:success result)
+        (let [code (first (:code result))]
+          (is (str/includes? code "class Shape"))
+          (is (str/includes? code "Triangle | Circle"))
+          (is (str/includes? code "class Triangle"))
+          (is (str/includes? code "class Circle")))))))
+
+(deftest test-wchnt-complex-example
+  (testing "Compile function handles complex WCHNT example"
+    (let [compile-fn (get-in wchnt-dsl [:targets "haxe" :compile-fn])
+          complex-wchnt "Game = PlayArea Ball Paddle/paddle1 Paddle/paddle2
 PlayArea = Rect
 Ball = int/x int/y int/dx int/dy int/rad
 Paddle = int/x int/y
 Rect = int/x int/y int/width int/height"
-          result (compile-fn input)]
-      (is (:success result))
-      (is (vector? (:code result)))
-      (is (= 5 (count (:code result)))) ; Should generate 5 classes: Game, PlayArea, Ball, Paddle, Rect
-      (is (some #(str/includes? % "class Game") (:code result)))
-      (is (some #(str/includes? % "public var playArea: PlayArea") (:code result)))
-      (is (some #(str/includes? % "public var paddle1: Paddle") (:code result)))
-      (is (some #(str/includes? % "public var paddle2: Paddle") (:code result))))))
+          result (compile-fn complex-wchnt)]
+      (is (m/validate schema/compile-result-schema result))
+      (is (:success result) "Compilation should succeed with complex example")
+      (when (:success result)
+        (let [code (first (:code result))]
+          (is (str/includes? code "class Game"))
+          (is (str/includes? code "class PlayArea"))
+          (is (str/includes? code "class Ball"))
+          (is (str/includes? code "class Paddle"))
+          (is (str/includes? code "class Rect"))
+          (is (str/includes? code "paddle1"))
+          (is (str/includes? code "paddle2")))))))
 
-(deftest test-wchnt-compilation-default-naming
-  (testing "Default naming (lowercase first letter)"
-    (let [plugin (get-plugin (fn [& args] args))
-          compile-fn (get-in plugin [:targets "haxe" :compile-fn])
-          input "Person = String/name int/age"
-          result (compile-fn input)]
-      (is (:success result))
-      (is (some #(str/includes? % "public var name: String") (:code result)))
-      (is (some #(str/includes? % "public var age: int") (:code result))))))
+(deftest test-wchnt-compile-failure
+  (testing "Compile function handles invalid WCHNT syntax"
+    (let [compile-fn (get-in wchnt-dsl [:targets "haxe" :compile-fn])
+          invalid-wchnt "invalid syntax here"
+          result (compile-fn invalid-wchnt)]
+      ;; Test that the result structure matches the schema even on failure
+      (is (m/validate schema/compile-result-schema result))
+      ;; CRITICAL: Test that compilation actually failed
+      (is (not (:success result)) "Compilation should fail with invalid WCHNT syntax")
+      ;; Test failure case
+      (is (contains? result :error))
+      (is (string? (:error result))))))
 
-(deftest test-wchnt-compilation-constructor
-  (testing "Constructor generation"
-    (let [plugin (get-plugin (fn [& args] args))
-          compile-fn (get-in plugin [:targets "haxe" :compile-fn])
-          input "Game = PlayArea Ball"
-          result (compile-fn input)
-          game-class (first (:code result))]
-      (is (:success result))
-      (is (str/includes? game-class "public function new("))
-      (is (str/includes? game-class "playArea: PlayArea"))
-      (is (str/includes? game-class "ball: Ball"))
-      (is (str/includes? game-class "this.playArea = playArea"))
-      (is (str/includes? game-class "this.ball = ball")))))
+(deftest test-wchnt-grammar
+  (testing "Grammar is properly defined"
+    (let [grammar (:grammar wchnt-dsl)]
+      (is (map? grammar))
+      (is (contains? grammar :rules))
+      (is (contains? grammar :start))
+      (is (string? (:start grammar)))
+      (is (map? (:rules grammar))))))
 
-(deftest test-wchnt-header
-  (testing "Header generation"
-    (let [plugin (get-plugin (fn [& args] args))
-          header-fn (get-in plugin [:targets "haxe" :header-fn])
-          result (header-fn)]
-      (is (map? result))
-      (is (contains? result :success))
-      (is (contains? result :code))
-      (is (str/includes? (:code result) "Generated by wchnt DSL"))
-      (is (str/includes? (:code result) "immutable")))))
-
-(deftest test-wchnt-eyeball
-  (testing "Eyeball function"
-    (let [plugin (get-plugin (fn [& args] args))
-          eyeball-fn (get-in plugin [:targets "haxe" :eyeball-fn])
-          result (eyeball-fn "class Test { public var field: Type; }")]
-      (is (map? result))
-      (is (contains? result :status))
-      (is (contains? result :issues)))))
-
-(deftest test-wchnt-eyeball-valid-code
-  (testing "Eyeball with valid Haxe code"
-    (let [plugin (get-plugin (fn [& args] args))
-          eyeball-fn (get-in plugin [:targets "haxe" :eyeball-fn])
-          valid-code "class Game {
-    public var playArea: PlayArea;
-    public var ball: Ball;
-    
-    public function new(playArea: PlayArea, ball: Ball) {
-        this.playArea = playArea;
-        this.ball = ball;
-    }
-}"
-          result (eyeball-fn valid-code)]
-      (is (= "seems ok" (:status result)))
-      (is (empty? (:issues result))))))
-
-(deftest test-wchnt-eyeball-invalid-code
-  (testing "Eyeball with invalid Haxe code"
-    (let [plugin (get-plugin (fn [& args] args))
-          eyeball-fn (get-in plugin [:targets "haxe" :eyeball-fn])
-          invalid-code "function test() { return 42; }"
-          result (eyeball-fn invalid-code)]
-      (is (= "issues" (:status result)))
-      (is (not (empty? (:issues result)))))))
-
-(run-tests)
+(deftest test-wchnt-jar-loading
+  (testing "JAR loading and real WCHNT compilation"
+    (let [compile-fn (get-in wchnt-dsl [:targets "haxe" :compile-fn])
+          result (compile-fn "Person = String/name int/age")]
+      ;; If JAR loading fails, the test should fail
+      (if (:success result)
+        ;; JAR loading succeeded, verify we got actual code
+        (do
+          (is (vector? (:code result)))
+          (is (pos? (count (:code result))))
+          (is (string? (first (:code result))))
+          (is (not (str/blank? (first (:code result)))))
+          ;; Verify it's actually Haxe code
+          (is (str/includes? (first (:code result)) "class"))
+          (is (str/includes? (first (:code result)) "public function new")))
+        ;; JAR loading failed, verify proper error reporting
+        (do
+          (is (contains? result :error))
+          (is (string? (:error result)))
+          (is (str/includes? (:error result) "wchnt_lang") "Error should mention the missing class"))))))

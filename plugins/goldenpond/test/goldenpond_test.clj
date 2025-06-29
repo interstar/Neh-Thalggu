@@ -2,14 +2,28 @@
   (:require [clojure.test :refer :all]
             [goldenpond.dsl :as dsl]
             [neh-thalggu.plugin-loader :as loader]
+            [neh-thalggu.schema :as schema]
+            [malli.core :as m]
             [instaparse.core :as insta]
             [instaparse.failure :as instafail]
             [clojure.data.json :as json]))
 
+(deftest plugin-schema-validation
+  (testing "goldenpond plugin conforms to schema"
+    (let [plugin (loader/load-plugin "plugins" "goldenpond")]
+      (is (m/validate schema/plugin-schema plugin)))))
+
+(deftest plugin-metadata-values
+  (testing "goldenpond plugin metadata values"
+    (let [plugin (loader/load-plugin "plugins" "goldenpond")]
+      (is (= "goldenpond" (:name (:metadata plugin))))
+      (is (string? (:description (:metadata plugin))))
+      (is (re-find #"musical" (:description (:metadata plugin))))
+      (is (re-find #"GoldenPond" (:description (:metadata plugin)))))))
+
 (deftest test-goldenpond-plugin
   (testing "Plugin structure"
     (let [plugin (loader/load-plugin "plugins" "goldenpond")]
-      (is (= "goldenpond" (:name plugin)))
       (is (contains? (:targets plugin) "summary"))
       (is (fn? (get-in plugin [:targets "summary" :compile-fn])))
       (is (fn? (get-in plugin [:targets "summary" :header-fn])))
@@ -75,13 +89,6 @@
       (is (contains? grammar :rules))
       (is (contains? grammar :start))
       (is (= "Music" (:start grammar))))))
-
-(deftest test-goldenpond-description
-  (testing "Plugin description"
-    (let [plugin (loader/load-plugin "plugins" "goldenpond")]
-      (is (string? (:description plugin)))
-      (is (re-find #"musical" (:description plugin)))
-      (is (re-find #"GoldenPond" (:description plugin))))))
 
 (deftest test-goldenpond-example
   (testing "Test that the example input parses correctly"

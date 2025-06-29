@@ -1,0 +1,61 @@
+# {{dsl-name}} DSL Plugin
+
+{{description}}
+
+## Overview
+
+This is a foreign JAR wrapper DSL plugin for Neh-Thalggu. It provides a Clojure interface to the {{dsl-name}} library, allowing AI assistants to use the library's functionality through the MCP protocol.
+
+## Structure
+
+- `dsl.clj` - Main plugin implementation that wraps the {{dsl-name}} JAR
+- `{{dsl-name}}-lang.jar` - The {{dsl-name}} library JAR file
+- `test/` - Test files for the plugin
+- `README.md` - This file
+
+## Implementation Status
+
+⚠️ **This is a generated template** - the actual JAR integration logic needs to be implemented.
+
+### TODO Items
+
+1. **JAR Integration**: Implement the actual loading and use of classes from `{{dsl-name}}-lang.jar`
+2. **Data Extraction**: Add functions to extract data from the parsed DSL input
+3. **Class Loading**: Replace TODO comments with actual Java class loading code
+4. **Object Configuration**: Implement the logic to configure Java objects with extracted data
+5. **Output Generation**: Replace the stub output with actual library-generated content
+6. **Error Handling**: Add specific error handling for JAR loading failures
+7. **Testing**: Add comprehensive tests for the JAR integration
+
+### Key Implementation Points
+
+- The plugin receives a `load-java-class` function as the second parameter to `get-plugin`
+- Use this function to load classes from the JAR: `(load-java-class "com.example.MainClass")`
+- Create instances with `.newInstance`
+- Configure objects with `set!` on their fields
+- Call methods to generate output
+- Handle exceptions appropriately
+
+## Usage
+
+Once implemented, this plugin will be available in Neh-Thalggu as:
+
+- **Compile**: `compile-{{dsl-name}}-target`
+- **Header**: `header-{{dsl-name}}-target`  
+- **Eyeball**: `eyeball-{{dsl-name}}-target`
+
+## Development
+
+To work on this plugin:
+
+1. Study the `goldenpond` plugin for JAR integration patterns
+2. Examine the `{{dsl-name}}-lang.jar` to understand the available classes and methods
+3. Implement the TODO sections in `dsl.clj`
+4. Add appropriate tests
+5. Update this README with actual usage information
+
+## Dependencies
+
+- `instaparse` - For DSL parsing
+- `clojure.data.json` - For JSON handling (if needed)
+- The {{dsl-name}} JAR file for the actual functionality 

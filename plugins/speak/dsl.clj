@@ -73,13 +73,17 @@ class {{name}}(ISpeaker):
        :warning "See :error"
        :error (.getMessage e)})))
 
-(defn get-plugin [tag-path]
+(defn get-metadata []
+  {:name "speak"
+   :type :native
+   :description "A simple DSL for generating things that say Hello"
+   :version "1.0.0"
+   :author "DSL MCP Team"})
+
+(defn get-plugin [tag-path load-fns]
   (let [dslname "speak"]
 
-    {:name dslname
-     :description "A simple DSL for generating things that say Hello"
-     :version "1.0.0"
-     :author "DSL MCP Team"
+    {:metadata (get-metadata)
      :grammar
      {:rules {"S" "Name 'says' Message"
               "Name" "#'[A-Za-z]+'"
@@ -245,3 +249,7 @@ Notes:
        }
       }
      }))
+
+;; Return both functions as a map - this is the last expression in the file
+{:get-metadata get-metadata
+ :get-plugin get-plugin}

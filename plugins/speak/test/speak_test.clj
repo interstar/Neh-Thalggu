@@ -14,6 +14,23 @@
 
 (def compile-fn (-> speak-dsl :targets (get "java") :compile-fn))
 
+(deftest two-function-pattern-test
+  (testing "Plugin implements two-function pattern correctly"
+    (let [plugin-fns (load-file "plugins/speak/dsl.clj")]
+      ;; Test that the plugin returns the expected function map
+      (is (contains? plugin-fns :get-metadata))
+      (is (contains? plugin-fns :get-plugin))
+      (is (fn? (:get-metadata plugin-fns)))
+      (is (fn? (:get-plugin plugin-fns)))
+      
+      ;; Test that get-metadata returns valid metadata using schema
+      (let [metadata ((:get-metadata plugin-fns))]
+        (is (m/validate schema/plugin-metadata-schema metadata)))
+      
+      ;; Test that get-plugin returns valid plugin using schema
+      (let [plugin ((:get-plugin plugin-fns) identity {})]
+        (is (m/validate schema/plugin-schema plugin))))))
+
 (deftest schema-check
   (testing "Schema check"
     (is (m/validate schema/plugin-schema speak-dsl))))

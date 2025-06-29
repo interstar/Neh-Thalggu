@@ -19,4 +19,4 @@
   :main neh-thalggu.core
   :profiles {:uberjar {:aot :all}
              :plugin-test {:test-paths ["plugins/speak/test" "plugins/ui/test" "plugins/makedsl/test" "plugins/goldenpond/test"]}}
-  :test-paths ["test" "plugins/speak/test" "plugins/ui/test" "plugins/makedsl/test" "plugins/goldenpond/test"]) 
+  :test-paths ["test" "plugins/speak/test" "plugins/ui/test" "plugins/makedsl/test" "plugins/goldenpond/test" "plugins/wchnt/test"]) 

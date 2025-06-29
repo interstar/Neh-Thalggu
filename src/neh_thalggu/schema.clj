@@ -24,12 +24,18 @@
    [:issues [:vector string?]]
    [:notes string?]])
 
-(def plugin-schema
+(def plugin-metadata-schema
   [:map
    [:name string?]
+   [:type [:enum :native :java-jar :clojure-jar]]
    [:description string?]
    [:version string?]
    [:author string?]
+   [:jar-file {:optional true} string?]])
+
+(def plugin-schema
+  [:map
+   [:metadata plugin-metadata-schema]
    [:grammar
     [:map
      [:rules [:map-of string? string?]]
@@ -75,6 +81,15 @@
     [:sequential fn?]]])
 
 ;; Helper functions for validation
+(defn validate-plugin-metadata
+  "Validates plugin metadata against the schema"
+  [metadata]
+  (let [result (m/validate plugin-metadata-schema metadata)]
+    (if (true? result)
+      {:valid true}
+      {:valid false
+       :errors (me/humanize (m/explain plugin-metadata-schema metadata))})))
+
 (defn validate-plugin
   "Validates plugin against the schema"
   [plugin]
@@ -97,19 +112,26 @@
       
 ;; Example usage:
 (comment
-  ;; Validate plugin
-  (validate-plugin
+  ;; Validate plugin metadata
+  (validate-plugin-metadata
    {:name "test-plugin"
+    :type :native
     :description "A test plugin"
+    :version "1.0.0"
+    :author "Test Author"})
+
+  ;; Validate full plugin
+  (validate-plugin
+   {:metadata {:name "test-plugin"
+               :type :native
+               :description "A test plugin"
+               :version "1.0.0"
+               :author "Test Author"}
     :targets {"haxe" {:description "Haxe target"
                       :compile-fn (fn [x] x)
                       :header-fn (fn [] "header")
                       :eyeball-fn (fn [x] x)}}
-    :grammar "grammar = ..."
-    :parser (fn [x] x)
-    :generate-header (fn [] "header")
-    :generate-template (fn [x] x)
-    :handle-parse-error (fn [x] x)})
+    :grammar {:rules {"S" "..."} :start "S"}})
 
   ;; Validate registry
   (validate-registry
@@ -119,4 +141,5 @@
                                          :eyeball-fn (fn [x] x)}}}}
     :prompt-routes [(fn [req] {:status 200 :body "test"})]
     :routes [(fn [req] {:status 200 :body "test"})]}))
+
 

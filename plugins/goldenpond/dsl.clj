@@ -256,15 +256,21 @@
        :warning "See :error"
        :error (.getMessage e)})))
 
-(defn get-plugin [tag-path load-java-class]
+(defn get-metadata []
+  {:name "goldenpond"
+   :type :java-jar
+   :description "A DSL for generating musical compositions using the GoldenPond library"
+   :version "1.0.0"
+   :author "DSL MCP Team"
+   :jar-file "goldenpond.jar"})
+
+(defn get-plugin [tag-path load-fns]
   (let [dslname "goldenpond"
-        grammar-rules (parse-grammar-rules grammar)]
-    {:name dslname
-     :description "A DSL for generating musical chord progressions and compositions using the GoldenPond library"
-     :version "1.0.0"
-     :author "GoldenPond DSL Team"
+        load-java-class (:load-java-class load-fns)]
+
+    {:metadata (get-metadata)
      :grammar
-     {:rules grammar-rules
+     {:rules (parse-grammar-rules grammar)
       :start "Music"}
      :targets
      {"summary"
@@ -469,4 +475,8 @@ Notes:
                  }
        }
       }
-     })) 
+     }))
+
+;; Return both functions as a map - this is the last expression in the file
+{:get-metadata get-metadata
+ :get-plugin get-plugin} 

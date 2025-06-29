@@ -11,8 +11,8 @@
   (testing "Loading a plugin"
     (let [plugin (loader/load-plugin test-plugin-dir "speak")]
       (is (map? plugin))
-      (is (= "speak" (:name plugin)))
-      (is (= "A simple DSL for generating things that say Hello" (:description plugin))))))
+      (is (= "speak" (get-in plugin [:metadata :name])))
+      (is (= "A simple DSL for generating things that say Hello" (get-in plugin [:metadata :description]))))))
 
 (deftest load-plugins-test
   (testing "Loading all plugins into registry"

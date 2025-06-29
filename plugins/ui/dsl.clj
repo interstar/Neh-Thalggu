@@ -408,11 +408,15 @@ Notes:
 (defn haxe-eyeball-prompt []
   "Performs sanity checks on generated Haxe code for the UI DSL.\n\nChecks:\n- Presence of UIViewGraph class\n- Presence of getRoot() and getLeaves() methods\n- Presence of layout calculation call\n\nExample:\nInput: Generated Haxe code\nOutput: Status and any issues found\n\nNotes:\n- Ensures the generated code has all required class and method definitions\n- Verifies the layout calculation is performed\n- This is the Haxe target implementation of the UI DSL eyeball function")
 
-(defn get-plugin [tag-path]
+(defn get-metadata []
   {:name "ui"
+   :type :native
    :description "A DSL for generating UI layouts"
    :version "1.0.0"
-   :author "DSL MCP Team"
+   :author "DSL MCP Team"})
+
+(defn get-plugin [tag-path load-fns]
+  {:metadata (get-metadata)
    :grammar
    {:rules {"S" "Layout"
             "Layout" "HorizontalLayout | VerticalLayout | ResponsiveLayout | GridLayout"
@@ -466,5 +470,8 @@ Notes:
                :header (haxe-header-prompt)
                :eyeball (haxe-eyeball-prompt)}}}
    })
+
+{:get-metadata get-metadata
+ :get-plugin get-plugin}
                       
                       

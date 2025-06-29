@@ -55,30 +55,63 @@
       (println "Failed to load Java class" class-name ":" (.getMessage e))
       nil)))
 
+(defn load-clojure-namespace [classloader namespace-sym]
+  "Loads a Clojure namespace using the provided classloader."
+  (try
+    (if classloader
+      ;; Add the classloader to the current thread's context classloader
+      (let [original-classloader (.getContextClassLoader (Thread/currentThread))]
+        (.setContextClassLoader (Thread/currentThread) classloader)
+        (try
+          (require namespace-sym)
+          (.setContextClassLoader (Thread/currentThread) original-classloader)
+          true
+          (catch Exception e
+            (.setContextClassLoader (Thread/currentThread) original-classloader)
+            (throw e))))
+      (require namespace-sym))
+    (catch Exception e
+      (println "Failed to load Clojure namespace" namespace-sym ":" (.getMessage e))
+      nil)))
+
 (defn load-plugin [plugin-dir plugin-name]
   (let [plugin-file (io/file plugin-dir plugin-name "dsl.clj")]
     (if (.exists plugin-file)
-      (let [get-plugin-fn (load-file (.getPath plugin-file))
-            ;; Create JAR classloader for this plugin
-            jar-classloader (create-jar-classloader plugin-dir plugin-name)
-            ;; Create load-java-class function for this plugin
-            load-java-class-fn (partial load-java-class jar-classloader)
-            ;; Call get-plugin with both functions, but handle backward compatibility
-            plugin (try
-                    ;; Try calling with both parameters (new plugins)
-                    (get-plugin-fn tag-path load-java-class-fn)
-                    (catch ArityException _
-                      ;; Fall back to single parameter (existing plugins)
-                      (get-plugin-fn tag-path)))]
-        (if (m/validate schema/plugin-schema plugin)
-          (-> plugin
-              (assoc :name plugin-name)
-              (update-in [:targets] #(update-vals % (fn [target]
-                                                    (update target :prompts update-keys keyword)))))
-          (do
-            (println "Plugin" plugin-name "does not match schema:")
-            (println (m/explain schema/plugin-schema plugin))
-            (System/exit 1))))
+      (let [;; Load the plugin file and get the function map
+            plugin-fns (load-file (.getPath plugin-file))
+            
+            ;; Stage 1: Get metadata (no load functions needed)
+            metadata ((:get-metadata plugin-fns))]
+        
+        ;; Validate metadata
+        (let [metadata-validation (schema/validate-plugin-metadata metadata)]
+          (if (:valid metadata-validation)
+            (let [;; Stage 2: Create appropriate load functions based on metadata
+                  jar-classloader (create-jar-classloader plugin-dir plugin-name)
+                  load-fns (case (:type metadata)
+                             :java-jar {:load-java-class (partial load-java-class jar-classloader)}
+                             :clojure-jar {:load-java-class (partial load-java-class jar-classloader)
+                                          :load-clojure-namespace (partial load-clojure-namespace jar-classloader)}
+                             :native {})
+                  
+                  ;; Stage 3: Get full plugin (with load functions)
+                  plugin ((:get-plugin plugin-fns) tag-path load-fns)]
+              
+              ;; Validate full plugin
+              (let [plugin-validation (schema/validate-plugin plugin)]
+                (if (:valid plugin-validation)
+                  (-> plugin
+                      (update :metadata assoc :name plugin-name)
+                      (update-in [:targets] #(update-vals % (fn [target]
+                                                            (update target :prompts update-keys keyword)))))
+                  (do
+                    (println "Plugin" plugin-name "does not match schema:")
+                    (println (:errors plugin-validation))
+                    (System/exit 1)))))
+            (do
+              (println "Plugin metadata for" plugin-name "does not match schema:")
+              (println (:errors metadata-validation))
+              (System/exit 1)))))
       (do
         (println "Plugin file not found:" (.getAbsolutePath plugin-file))
         (System/exit 1)))))
@@ -87,7 +120,8 @@
   (let [dir (io/file plugin-dir)]
     (if (.exists dir)
       (reduce (fn [reg plugin]
-                (let [{:keys [name targets]} plugin]
+                (let [{:keys [metadata targets]} plugin
+                      {:keys [name]} metadata]
                   (reduce (fn [reg [target-name target-info]]
                            (registry/add-dsl reg name target-name
                                            :description (:description target-info)

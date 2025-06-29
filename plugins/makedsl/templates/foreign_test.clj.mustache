@@ -1,0 +1,63 @@
+(ns {{dsl-name}}.test.{{dsl-name}}-test
+  (:require [clojure.test :refer :all]
+            [{{dsl-name}}.dsl :refer [get-plugin]]))
+
+(deftest test-{{dsl-name}}-plugin-structure
+  (testing "Plugin has correct structure"
+    (let [plugin (get-plugin identity identity)] ; Mock tag-path and load-java-class functions
+      (is (= "{{dsl-name}}" (:name plugin)))
+      (is (= "{{description}}" (:description plugin)))
+      (is (contains? (:targets plugin) "target"))
+      (is (fn? (get-in plugin [:targets "target" :compile-fn])))
+      (is (fn? (get-in plugin [:targets "target" :header-fn])))
+      (is (fn? (get-in plugin [:targets "target" :eyeball-fn]))))))
+
+(deftest test-{{dsl-name}}-header
+  (testing "Header function returns valid structure"
+    (let [plugin (get-plugin identity identity)
+          header-fn (get-in plugin [:targets "target" :header-fn])
+          result (header-fn)]
+      (is (:success result))
+      (is (string? (:code result)))
+      (is (string? (:notes result)))
+      (is (string? (:warning result))))))
+
+(deftest test-{{dsl-name}}-eyeball
+  (testing "Eyeball function returns valid structure"
+    (let [plugin (get-plugin identity identity)
+          eyeball-fn (get-in plugin [:targets "target" :eyeball-fn])
+          result (eyeball-fn "test code")]
+      (is (contains? #{"seems ok" "issues"} (:status result)))
+      (is (vector? (:issues result)))
+      (is (string? (:notes result))))))
+
+(deftest test-{{dsl-name}}-compile
+  (testing "Compile function handles valid input"
+    (let [plugin (get-plugin identity identity)
+          compile-fn (get-in plugin [:targets "target" :compile-fn])
+          result (compile-fn "valid input")]
+      ;; Note: This will likely fail until the actual JAR integration is implemented
+      ;; but we can test the structure
+      (is (map? result))
+      (is (contains? result :success))
+      (is (contains? result :code))
+      (is (contains? result :notes))
+      (is (contains? result :warning)))))
+
+(deftest test-{{dsl-name}}-grammar
+  (testing "Grammar is properly defined"
+    (let [plugin (get-plugin identity identity)
+          grammar (:grammar plugin)]
+      (is (map? grammar))
+      (is (contains? grammar :rules))
+      (is (contains? grammar :start))
+      (is (string? (:start grammar)))
+      (is (map? (:rules grammar))))))
+
+;; TODO: Add more specific tests once the JAR integration is implemented
+;; Example:
+;; (deftest test-{{dsl-name}}-jar-integration
+;;   (testing "JAR integration works correctly"
+;;     ;; This would test actual JAR loading and class instantiation
+;;     ;; once the implementation is complete
+;;     )) 

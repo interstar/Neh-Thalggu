@@ -6,14 +6,47 @@ The wchnt DSL is a domain-specific language for defining data schemas that compi
 
 The wchnt DSL uses a simple syntax inspired by B-N Format and Haskell types. Each line defines a class and its components:
 
-```
-ClassName = Component1 Component2/altName Component3
+```ClassName = Component1 Component2/altName Component3
 ```
 
 - `ClassName`: The name of the class to generate
 - `Component1`: A component of type `Component1` (default name: `component1`)
 - `Component2/altName`: A component of type `Component2` with alternative name `altName`
 - Multiple components are separated by spaces
+
+### Type Features
+
+#### Basic Types
+```
+Person = String/name int/age
+```
+
+#### Array Types
+Use `[Type]` to define arrays of a type:
+```
+Person = String/name [Address]/addresses
+Address = String/street String/city
+```
+
+#### Interface Disjunctions
+Use `Type1 | Type2` to define interface relationships. Note that disjunctions are mutually exclusive with composition - a line must be either all composition OR all disjunction:
+```
+Shape = Triangle | Circle
+Triangle = int/base int/height
+Circle = int/radius
+```
+
+#### Mixed Features
+You can combine arrays and disjunctions across different lines:
+```
+Game = [Shape]/shapes [Player]/players
+Shape = Triangle | Circle
+Triangle = int/base int/height
+Circle = int/radius
+Player = String/name int/score
+```
+
+**Important**: A single line cannot mix composition and disjunction. For example, `Person = Name | Name Address` is not allowed. Use separate lines for different patterns.
 
 ## Examples
 
@@ -55,11 +88,75 @@ class PlayArea {
 // ... etc for Ball, Paddle, Rect
 ```
 
-### More Examples
+### Array Example
 
 ```
-Person = String/name int/age Address/home
-Address = String/street String/city String/state
+Person = String/name [Address]/addresses
+Address = String/street String/city String/zipCode
+```
+
+Generates:
+
+```haxe
+class Person {
+    public var name: String;
+    public var addresses: Array<Address>;
+
+    public function new(name: String, addresses: Array<Address>) {
+        this.name = name;
+        this.addresses = addresses;
+    }
+}
+
+class Address {
+    public var street: String;
+    public var city: String;
+    public var zipCode: String;
+
+    public function new(street: String, city: String, zipCode: String) {
+        this.street = street;
+        this.city = city;
+        this.zipCode = zipCode;
+    }
+}
+```
+
+### Interface Disjunction Example
+
+```
+Shape = Triangle | Circle
+Triangle = int/base int/height
+Circle = int/radius
+```
+
+Generates:
+
+```haxe
+class Shape {
+    public var shape: Triangle | Circle;
+
+    public function new(shape: Triangle | Circle) {
+        this.shape = shape;
+    }
+}
+
+class Triangle {
+    public var base: int;
+    public var height: int;
+
+    public function new(base: int, height: int) {
+        this.base = base;
+        this.height = height;
+    }
+}
+
+class Circle {
+    public var radius: int;
+
+    public function new(radius: int) {
+        this.radius = radius;
+    }
+}
 ```
 
 ## Generated Code Structure
@@ -69,6 +166,8 @@ Each generated Haxe class:
 - Has a constructor that takes all components as parameters
 - Is immutable (no setters)
 - Uses default naming (lowercase first letter) unless alternative name specified
+- Supports arrays with `Array<Type>` syntax
+- Supports interface disjunctions with `Type1 | Type2` syntax
 
 ## Usage
 

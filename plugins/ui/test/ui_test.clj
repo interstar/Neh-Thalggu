@@ -13,6 +13,11 @@
 (def compile-fn (-> ui-dsl :targets (get "jinja2") :compile-fn))
 (def haxe-compile-fn (-> ui-dsl :targets (get "haxe") :compile-fn))
 
+(deftest two-function-pattern
+  (testing "UI plugin follows two-function pattern"
+    (let [plugin (loader/load-plugin plugin-dir "ui")]
+      (is (m/validate schema/plugin-schema plugin)))))
+
 (deftest schema-checking
   (testing "Schema check"
     (is (m/validate schema/plugin-schema ui-dsl ))))
