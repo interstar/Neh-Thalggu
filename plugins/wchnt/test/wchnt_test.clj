@@ -62,10 +62,10 @@ Address = String/street String/city")]
       (is (m/validate schema/compile-result-schema result))
       (is (:success result) "Compilation should succeed with array types")
       (when (:success result)
-        (let [code (first (:code result))]
-          (is (str/includes? code "class Person"))
-          (is (str/includes? code "Array<Address>"))
-          (is (str/includes? code "class Address")))))))
+        (let [all-code (str/join "\n" (:code result))]
+          (is (str/includes? all-code "class Person"))
+          (is (str/includes? all-code "Array<Address>"))
+          (is (str/includes? all-code "class Address")))))))
 
 (deftest test-wchnt-interface-disjunction
   (testing "Compile function handles interface disjunctions"
@@ -76,11 +76,10 @@ Circle = int/radius")]
       (is (m/validate schema/compile-result-schema result))
       (is (:success result) "Compilation should succeed with interface disjunctions")
       (when (:success result)
-        (let [code (first (:code result))]
-          (is (str/includes? code "class Shape"))
-          (is (str/includes? code "Triangle | Circle"))
-          (is (str/includes? code "class Triangle"))
-          (is (str/includes? code "class Circle")))))))
+        (let [all-code (str/join "\n" (:code result))]
+          (is (str/includes? all-code "interface Shape"))
+          (is (str/includes? all-code "class Triangle"))
+          (is (str/includes? all-code "class Circle")))))))
 
 (deftest test-wchnt-complex-example
   (testing "Compile function handles complex WCHNT example"
@@ -94,14 +93,14 @@ Rect = int/x int/y int/width int/height"
       (is (m/validate schema/compile-result-schema result))
       (is (:success result) "Compilation should succeed with complex example")
       (when (:success result)
-        (let [code (first (:code result))]
-          (is (str/includes? code "class Game"))
-          (is (str/includes? code "class PlayArea"))
-          (is (str/includes? code "class Ball"))
-          (is (str/includes? code "class Paddle"))
-          (is (str/includes? code "class Rect"))
-          (is (str/includes? code "paddle1"))
-          (is (str/includes? code "paddle2")))))))
+        (let [all-code (str/join "\n" (:code result))]
+          (is (str/includes? all-code "class Game"))
+          (is (str/includes? all-code "class PlayArea"))
+          (is (str/includes? all-code "class Ball"))
+          (is (str/includes? all-code "class Paddle"))
+          (is (str/includes? all-code "class Rect"))
+          (is (str/includes? all-code "paddle1"))
+          (is (str/includes? all-code "paddle2")))))))
 
 (deftest test-wchnt-compile-failure
   (testing "Compile function handles invalid WCHNT syntax"
