@@ -14,10 +14,10 @@ In a sense, the idea here is "Language Oriented Programming", which has long bee
 
 ### Quick Start
 
-The code is written in Clojure and managed with Leiningen
+The code is written in Clojure and managed with Leiningen, so you'll need `lein` installed.
 
 ```
-./go.sh
+lein run -p plugins/ -m 3000 -w 3001
 ```
 
 This will launch the Neh-Thalggu server with an MCP listener (for access by coding agents) on port 3000, and human readable web interface on port 3001
